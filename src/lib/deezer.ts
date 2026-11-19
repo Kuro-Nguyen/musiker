@@ -98,6 +98,8 @@ interface DeezerAlbumRaw {
   cover_xl?: string;
   release_date?: string;
   fans?: number;
+  nb_tracks?: number;
+  record_type?: string;
   genres?: { data?: Array<{ id: number; name: string }> };
   artist?: {
     id: number;
@@ -335,12 +337,21 @@ export async function searchMusicEntities(
       return { items, provider: "deezer" };
     }
 
-    // type === 'album'
+    // type === 'album' — exclude 1-track singles; only keep EP/Album (>= 2 tracks)
+    const rawLimit = Math.min(30, limit * 2);
     const res = await fetchDeezerJson<DeezerSearchResponse<DeezerAlbumRaw>>(
-      `/search/album?q=${encodeURIComponent(trimmed)}&limit=${limit}`
+      `/search/album?q=${encodeURIComponent(trimmed)}&limit=${rawLimit}`
     );
 
-    const items: MusicResultItem[] = (res.data ?? []).map((album) => {
+    const items: MusicResultItem[] = (res.data ?? [])
+      .filter((album) => {
+        if (album.record_type?.toLowerCase() === "single") return false;
+        if (album.nb_tracks !== undefined && album.nb_tracks < 2) return false;
+        if (/\s-\s*single$/i.test((album.title ?? "").trim())) return false;
+        return true;
+      })
+      .slice(0, limit)
+      .map((album) => {
       const coverUrl =
         album.cover_xl ?? album.cover_big ?? album.cover_medium ?? album.cover ?? "";
       const artistName = album.artist?.name ?? "Unknown Artist";

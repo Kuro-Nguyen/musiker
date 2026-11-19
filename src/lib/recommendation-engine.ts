@@ -154,7 +154,7 @@ const GENRE_SEEDS: Record<number, { hop1: string[]; hop2: string[] }> = {
 
 const REGION_SEEDS: Record<Exclude<QuickFilters["region"], "all">, string[]> = {
   us_uk: ["Radiohead", "Frank Ocean", "Arctic Monkeys", "Phoebe Bridgers", "Kendrick Lamar", "Fred again.."],
-  vpop: ["Vũ.", "Ngọt", "Sơn Tùng M-TP", "tlinh", "Hoàng Dũng", "Chillies", "Đen", "Thịnh Suy"],
+  vpop: ["Vũ.", "Ngọt", "Cá Hồi Hoang", "Chillies", "Mỹ Tâm", "Hà Anh Tuấn", "Hoàng Dũng", "Thịnh Suy", "tlinh", "MCK", "Hoàng Thùy Linh", "Sơn Tùng M-TP"],
   kpop: ["Hyukoh", "Wave to Earth", "IU", "NewJeans", "SE SO NEON", "DEAN", "Jannabi"],
   jpop: ["Fujii Kaze", "Vaundy", "Yoasobi", "Tatsuro Yamashita", "Lamp", "Kenshi Yonezu", "Ichiko Aoba"],
   latin: ["Rosalía", "Natalia Lafourcade", "Bad Bunny", "Buena Vista Social Club", "C. Tangana", "Jorge Drexler"],
@@ -429,6 +429,10 @@ function matchesPopularityFilter(
   return score <= 84;
 }
 
+function isSingleTrackTitle(title: string): boolean {
+  return /\s-\s*single$/i.test(title.trim());
+}
+
 async function generateCandidatePool(
   req: DiscoverRequest
 ): Promise<{ candidates: CandidateEntry[]; provider: MusicProvider }> {
@@ -459,6 +463,7 @@ async function generateCandidatePool(
     getProviderStatus().activeProvider;
 
   const dedupMap = new Map<string, CandidateEntry>();
+  const homonymBackup: CandidateEntry[] = [];
 
   for (const { seed, items } of responses) {
     let artistMatched = items;
@@ -473,6 +478,18 @@ async function generateCandidatePool(
       });
       if (matched.length > 0) {
         artistMatched = matched;
+      } else {
+        for (const item of items) {
+          if (req.filters.entityType === "album" && isSingleTrackTitle(item.title)) {
+            continue;
+          }
+          homonymBackup.push({
+            item,
+            hopWeight: 0.25,
+            reasonLabel: seed.reasonLabel,
+          });
+        }
+        continue;
       }
     }
 
@@ -483,6 +500,9 @@ async function generateCandidatePool(
         : artistMatched;
 
     for (const item of sliced) {
+      if (req.filters.entityType === "album" && isSingleTrackTitle(item.title)) {
+        continue;
+      }
       const dedupKey = `${item.type}:${item.title.toLowerCase()}::${item.subtitle.toLowerCase()}`;
       if (!dedupMap.has(dedupKey)) {
         dedupMap.set(dedupKey, {
@@ -490,6 +510,15 @@ async function generateCandidatePool(
           hopWeight: seed.hopWeight,
           reasonLabel: seed.reasonLabel,
         });
+      }
+    }
+  }
+
+  if (dedupMap.size < req.count && homonymBackup.length > 0) {
+    for (const entry of homonymBackup) {
+      const dedupKey = `${entry.item.type}:${entry.item.title.toLowerCase()}::${entry.item.subtitle.toLowerCase()}`;
+      if (!dedupMap.has(dedupKey)) {
+        dedupMap.set(dedupKey, entry);
       }
     }
   }
@@ -507,11 +536,18 @@ function filterAndRelaxCandidates(
   const { tasteProfile, filters, count, seenIds } = req;
   const seenSet = new Set(seenIds);
 
+  const withoutSingleIfAlbum =
+    filters.entityType === "album"
+      ? candidates.filter((c) => !isSingleTrackTitle(c.item.title))
+      : candidates;
+  const candidateSource =
+    withoutSingleIfAlbum.length > 0 ? withoutSingleIfAlbum : candidates;
+
   // Never violate excludedGenres unless literally zero items remain
-  const withoutExcluded = candidates.filter(
+  const withoutExcluded = candidateSource.filter(
     (c) => !matchesExcludedGenre(c.item.genre, tasteProfile.excludedGenres)
   );
-  const basePool = withoutExcluded.length > 0 ? withoutExcluded : candidates;
+  const basePool = withoutExcluded.length > 0 ? withoutExcluded : candidateSource;
 
   // Strict pass: unseen + era + popularity
   const strict = basePool.filter(
@@ -604,26 +640,36 @@ function scoreAndSampleCandidates(
     };
   });
 
-  // Weighted random sampling without replacement
+  // Weighted random sampling without replacement, preferring distinct artists
   const remaining = [...weighted];
   const chosen: MusicResultItem[] = [];
+  const pickedArtists = new Set<string>();
   const targetCount = Math.min(count, remaining.length);
 
   while (chosen.length < targetCount && remaining.length > 0) {
-    const totalWeight = remaining.reduce((sum, entry) => sum + entry.weight, 0);
-    let threshold = Math.random() * totalWeight;
-    let pickedIndex = 0;
+    const distinctPool = remaining.filter(
+      (entry) => !pickedArtists.has(entry.item.subtitle.trim().toLowerCase())
+    );
+    const activePool = distinctPool.length > 0 ? distinctPool : remaining;
 
-    for (let i = 0; i < remaining.length; i += 1) {
-      threshold -= remaining[i].weight;
+    const totalWeight = activePool.reduce((sum, entry) => sum + entry.weight, 0);
+    let threshold = Math.random() * totalWeight;
+    let pickedEntry = activePool[0];
+
+    for (let i = 0; i < activePool.length; i += 1) {
+      threshold -= activePool[i].weight;
       if (threshold <= 0) {
-        pickedIndex = i;
+        pickedEntry = activePool[i];
         break;
       }
     }
 
-    const [picked] = remaining.splice(pickedIndex, 1);
-    chosen.push(picked.item);
+    const removeIdx = remaining.indexOf(pickedEntry);
+    if (removeIdx >= 0) {
+      remaining.splice(removeIdx, 1);
+    }
+    pickedArtists.add(pickedEntry.item.subtitle.trim().toLowerCase());
+    chosen.push(pickedEntry.item);
   }
 
   return chosen;
@@ -642,55 +688,124 @@ function withTimeout<T>(
   ]);
 }
 
+async function hydrateSingleResult(
+  item: MusicResultItem
+): Promise<MusicResultItem> {
+  if (item.type === "album") {
+    const hydrated = await withTimeout(
+      getAlbumDetailsWithTracks(item.id, {
+        title: item.title,
+        artist: item.subtitle,
+      }).then((res) => res.album),
+      2500,
+      null
+    );
+
+    if (hydrated) {
+      return {
+        ...hydrated,
+        popularityScore: item.popularityScore || hydrated.popularityScore,
+        discoveryReason: item.discoveryReason,
+      };
+    }
+    return item;
+  }
+
+  if (!item.featuredTrack.previewUrl) {
+    const fallback = await withTimeout(
+      findItunesPreview(
+        item.featuredTrack.artistName,
+        item.featuredTrack.title
+      ),
+      2000,
+      null
+    );
+    if (fallback?.previewUrl) {
+      return {
+        ...item,
+        featuredTrack: {
+          ...item.featuredTrack,
+          previewUrl: fallback.previewUrl,
+          duration: fallback.duration || item.featuredTrack.duration,
+        },
+      };
+    }
+  }
+
+  return item;
+}
+
+function isValidMultiTrackAlbumItem(item: MusicResultItem): boolean {
+  if (item.type !== "album") return true;
+  if (isSingleTrackTitle(item.title)) return false;
+  if (item.tracklist && item.tracklist.length < 2) return false;
+  return true;
+}
+
 async function hydrateSelectedResults(
-  selected: MusicResultItem[]
+  selected: MusicResultItem[],
+  backupPool: CandidateEntry[],
+  entityType: QuickFilters["entityType"]
 ): Promise<MusicResultItem[]> {
-  return Promise.all(
-    selected.map(async (item) => {
-      if (item.type === "album") {
-        const hydrated = await withTimeout(
-          getAlbumDetailsWithTracks(item.id, {
-            title: item.title,
-            artist: item.subtitle,
-          }).then((res) => res.album),
-          2500,
-          null
-        );
+  const initialHydrated = await Promise.all(selected.map(hydrateSingleResult));
 
-        if (hydrated) {
-          return {
-            ...hydrated,
-            popularityScore: item.popularityScore || hydrated.popularityScore,
-            discoveryReason: item.discoveryReason,
-          };
-        }
-        return item;
-      }
+  if (entityType !== "album") {
+    return initialHydrated;
+  }
 
-      if (!item.featuredTrack.previewUrl) {
-        const fallback = await withTimeout(
-          findItunesPreview(
-            item.featuredTrack.artistName,
-            item.featuredTrack.title
-          ),
-          2000,
-          null
-        );
-        if (fallback?.previewUrl) {
-          return {
-            ...item,
-            featuredTrack: {
-              ...item.featuredTrack,
-              previewUrl: fallback.previewUrl,
-              duration: fallback.duration || item.featuredTrack.duration,
-            },
-          };
-        }
-      }
+  // Ensure 100% of returned albums are multi-track EPs/Albums (>= 2 tracks)
+  const validItems = initialHydrated.filter(isValidMultiTrackAlbumItem);
+  if (validItems.length >= selected.length) {
+    return validItems.slice(0, selected.length);
+  }
 
-      return item;
-    })
+  const usedKeys = new Set(
+    initialHydrated.map(
+      (i) => `${i.id}::${i.title.toLowerCase()}::${i.subtitle.toLowerCase()}`
+    )
   );
+  const unusedBackups = backupPool
+    .map((entry) => ({
+      ...entry.item,
+      discoveryReason: entry.reasonLabel,
+    }))
+    .filter((candidate) => {
+      const key = `${candidate.id}::${candidate.title.toLowerCase()}::${candidate.subtitle.toLowerCase()}`;
+      return !usedKeys.has(key) && !isSingleTrackTitle(candidate.title);
+    });
+
+  const needed = selected.length - validItems.length;
+  const replacementBatch = unusedBackups.slice(0, Math.min(needed * 2, 10));
+  if (replacementBatch.length > 0) {
+    const hydratedReplacements = await Promise.all(
+      replacementBatch.map(hydrateSingleResult)
+    );
+    for (const rep of hydratedReplacements) {
+      if (validItems.length >= selected.length) break;
+      if (isValidMultiTrackAlbumItem(rep)) {
+        validItems.push(rep);
+      }
+    }
+  }
+
+  // If still fewer than requested (e.g., an artist only had singles), fall back to multi-track mock EPs/Albums
+  if (validItems.length < selected.length) {
+    for (const mock of MOCK_DISCOVERY_RESULTS) {
+      if (validItems.length >= selected.length) break;
+      if (
+        mock.type === "album" &&
+        (mock.tracklist?.length ?? 0) >= 2 &&
+        !validItems.some((v) => v.id === mock.id)
+      ) {
+        const hydratedMock = await hydrateSingleResult(mock);
+        if (isValidMultiTrackAlbumItem(hydratedMock)) {
+          validItems.push(hydratedMock);
+        }
+      }
+    }
+  }
+
+  return validItems.slice(0, selected.length);
 }
 
 /**
@@ -718,7 +833,11 @@ export async function discoverMusic(
   const { candidates, provider } = await generateCandidatePool(normalizedReq);
   const filteredPool = filterAndRelaxCandidates(candidates, normalizedReq);
   const sampled = scoreAndSampleCandidates(filteredPool, normalizedReq);
-  const hydratedItems = await hydrateSelectedResults(sampled);
+  const hydratedItems = await hydrateSelectedResults(
+    sampled,
+    filteredPool,
+    normalizedReq.filters.entityType
+  );
 
   const hydratedCount = hydratedItems.filter((item) =>
     Boolean(item.featuredTrack.previewUrl)

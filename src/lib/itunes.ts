@@ -311,6 +311,17 @@ export async function searchItunesTracks(
     });
 }
 
+export function isItunesMultiTrackAlbum(col: ItunesRawCollection): boolean {
+  if (col.trackCount !== undefined && col.trackCount < 2) {
+    return false;
+  }
+  const title = (col.collectionName ?? "").trim();
+  if (/\s-\s*single$/i.test(title)) {
+    return false;
+  }
+  return true;
+}
+
 export async function searchItunesAlbums(
   query: string,
   limit = 8
@@ -319,12 +330,18 @@ export async function searchItunesAlbums(
   if (!trimmed) return [];
 
   const safeLimit = Math.max(1, Math.min(20, limit));
+  const rawLimit = Math.min(40, Math.max(safeLimit * 3, 18));
   const data = await fetchItunesJson<ItunesSearchResponse<ItunesRawCollection>>(
-    `/search?term=${encodeURIComponent(trimmed)}&entity=album&limit=${safeLimit}`
+    `/search?term=${encodeURIComponent(trimmed)}&entity=album&limit=${rawLimit}`
   );
 
   return data.results
-    .filter((col) => Boolean(col.collectionId && col.collectionName))
+    .filter(
+      (col) =>
+        Boolean(col.collectionId && col.collectionName) &&
+        isItunesMultiTrackAlbum(col)
+    )
+    .slice(0, safeLimit)
     .map((col, index) => {
       const albumId = String(col.collectionId);
       const albumTitle = col.collectionName ?? "Unknown Album";
@@ -390,13 +407,25 @@ export async function getItunesAlbumDetails(
     }
   }
 
-  const hasTracks = lookupResults.some(
+  const rawTracksInitial = lookupResults.filter(
     (entry) => (entry as ItunesRawTrack).wrapperType === "track"
   );
+  const hasMultiTracks = rawTracksInitial.length >= 2;
+  const initialCollection = lookupResults.find(
+    (entry): entry is ItunesRawCollection =>
+      (entry as ItunesRawCollection).wrapperType === "collection"
+  );
+  const searchArtistOrTitle =
+    fallbackQuery?.artist ||
+    initialCollection?.artistName ||
+    fallbackQuery?.title;
 
-  // Fallback search by album title + artist if ID is a mock ID or Deezer ID
-  if (!hasTracks && (fallbackQuery?.title || fallbackQuery?.artist)) {
-    const searchTerm = [fallbackQuery.artist, fallbackQuery.title]
+  // Fallback search for multi-track EP/Album if ID is mock/Deezer or resolved to a 1-track Single
+  if (!hasMultiTracks && searchArtistOrTitle) {
+    const searchTerm = [
+      fallbackQuery?.artist ?? initialCollection?.artistName,
+      rawTracksInitial.length === 0 ? fallbackQuery?.title : undefined,
+    ]
       .filter(Boolean)
       .join(" ")
       .trim();
@@ -404,27 +433,39 @@ export async function getItunesAlbumDetails(
     if (searchTerm) {
       const searchRes = await fetchItunesJson<
         ItunesSearchResponse<ItunesRawCollection>
-      >(`/search?term=${encodeURIComponent(searchTerm)}&entity=album&limit=5`);
+      >(`/search?term=${encodeURIComponent(searchTerm)}&entity=album&limit=12`);
 
-      const targetTitle = normalizeMatchText(fallbackQuery.title ?? "");
-      const targetArtist = normalizeMatchText(fallbackQuery.artist ?? "");
+      const multiTrackCols = searchRes.results.filter(
+        (col) => Boolean(col.collectionId) && isItunesMultiTrackAlbum(col)
+      );
+      const candidates =
+        multiTrackCols.length > 0 ? multiTrackCols : searchRes.results;
+
+      const targetTitle = normalizeMatchText(fallbackQuery?.title ?? "");
+      const targetArtist = normalizeMatchText(
+        fallbackQuery?.artist ?? initialCollection?.artistName ?? ""
+      );
 
       const matched =
-        searchRes.results.find((col) => {
+        candidates.find((col) => {
           const colTitle = normalizeMatchText(col.collectionName ?? "");
           const colArtist = normalizeMatchText(col.artistName ?? "");
           return (
-            (!targetTitle || colTitle.includes(targetTitle)) &&
+            (!targetTitle ||
+              rawTracksInitial.length === 1 ||
+              colTitle.includes(targetTitle)) &&
             (!targetArtist || colArtist.includes(targetArtist))
           );
-        }) ?? searchRes.results[0];
+        }) ?? candidates[0];
 
-      if (matched?.collectionId) {
+      if (matched?.collectionId && String(matched.collectionId) !== targetCollectionId) {
         targetCollectionId = String(matched.collectionId);
         const lookup = await fetchItunesJson<
           ItunesSearchResponse<ItunesRawCollection | ItunesRawTrack>
         >(`/lookup?id=${targetCollectionId}&entity=song&limit=25`);
-        lookupResults = lookup.results ?? [];
+        if ((lookup.results?.length ?? 0) > 0) {
+          lookupResults = lookup.results;
+        }
       }
     }
   }

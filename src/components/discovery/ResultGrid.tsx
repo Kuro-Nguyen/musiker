@@ -2,7 +2,10 @@
 
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { MusicCard } from "@/components/discovery/MusicCard";
+import {
+  MusicCard,
+  type MusicCardVariant,
+} from "@/components/discovery/MusicCard";
 import type { MusicResultItem, TrackItem } from "@/types/music";
 
 interface ResultGridProps {
@@ -26,41 +29,51 @@ interface ResultGridProps {
 
 function FeaturedSkeleton() {
   return (
-    <div className="mx-auto flex max-w-4xl flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] md:flex-row">
-      <div className="aspect-square w-full shrink-0 animate-pulse bg-[var(--bg-elevated)] md:w-[340px]" />
-      <div className="flex flex-1 flex-col justify-between p-5 space-y-4">
-        <div className="space-y-2.5">
-          <div className="h-6 w-2/3 animate-pulse rounded bg-[var(--bg-elevated)]" />
+    <div className="mx-auto flex max-w-3xl flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] md:flex-row">
+      <div className="aspect-square w-full shrink-0 animate-pulse bg-[var(--bg-elevated)] md:w-[260px]" />
+      <div className="flex flex-1 flex-col justify-between space-y-3 p-4 sm:p-5">
+        <div className="space-y-2">
+          <div className="h-5 w-2/3 animate-pulse rounded bg-[var(--bg-elevated)]" />
           <div className="h-4 w-1/3 animate-pulse rounded bg-[var(--bg-elevated)]" />
-          <div className="flex gap-2 pt-2">
-            <div className="h-5 w-20 animate-pulse rounded bg-[var(--bg-elevated)]" />
-            <div className="h-5 w-20 animate-pulse rounded bg-[var(--bg-elevated)]" />
-          </div>
-          <div className="h-4 w-4/5 animate-pulse rounded bg-[var(--bg-elevated)]" />
-          <div className="h-12 w-full animate-pulse rounded-lg bg-[var(--bg-elevated)]" />
+          <div className="h-9 w-full animate-pulse rounded-lg bg-[var(--bg-elevated)]" />
         </div>
-        <div className="space-y-2 pt-2">
-          <div className="h-8 w-full animate-pulse rounded bg-[var(--bg-elevated)]" />
-          <div className="h-8 w-full animate-pulse rounded bg-[var(--bg-elevated)]" />
-          <div className="h-8 w-full animate-pulse rounded bg-[var(--bg-elevated)]" />
+        <div className="space-y-1.5">
+          <div className="h-7 w-full animate-pulse rounded bg-[var(--bg-elevated)]" />
+          <div className="h-7 w-full animate-pulse rounded bg-[var(--bg-elevated)]" />
+          <div className="h-7 w-full animate-pulse rounded bg-[var(--bg-elevated)]" />
         </div>
       </div>
     </div>
   );
 }
 
-function CardSkeleton() {
+function MediumCardSkeleton() {
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
-      <div className="aspect-square w-full animate-pulse border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)]" />
-      <div className="flex flex-1 flex-col justify-between p-5 space-y-3">
-        <div className="space-y-2">
-          <div className="h-5 w-3/4 animate-pulse rounded bg-[var(--bg-elevated)]" />
-          <div className="h-4 w-1/2 animate-pulse rounded bg-[var(--bg-elevated)]" />
-          <div className="h-4 w-5/6 animate-pulse rounded bg-[var(--bg-elevated)]" />
+      <div className="aspect-[4/3] w-full animate-pulse border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)]" />
+      <div className="flex flex-1 flex-col justify-between space-y-2.5 p-3.5">
+        <div className="space-y-1.5">
+          <div className="h-4 w-3/4 animate-pulse rounded bg-[var(--bg-elevated)]" />
+          <div className="h-3.5 w-1/2 animate-pulse rounded bg-[var(--bg-elevated)]" />
         </div>
-        <div className="h-11 w-full animate-pulse rounded-lg bg-[var(--bg-elevated)]" />
+        <div className="h-9 w-full animate-pulse rounded-lg bg-[var(--bg-elevated)]" />
       </div>
+    </div>
+  );
+}
+
+function CompactCardSkeleton() {
+  return (
+    <div className="flex flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+      <div className="flex items-start gap-3 p-3">
+        <div className="h-[88px] w-[88px] shrink-0 animate-pulse rounded-lg bg-[var(--bg-elevated)]" />
+        <div className="flex-1 space-y-2 pt-1">
+          <div className="h-3 w-1/2 animate-pulse rounded bg-[var(--bg-elevated)]" />
+          <div className="h-4 w-4/5 animate-pulse rounded bg-[var(--bg-elevated)]" />
+          <div className="h-3 w-3/5 animate-pulse rounded bg-[var(--bg-elevated)]" />
+        </div>
+      </div>
+      <div className="h-7 w-full animate-pulse border-t border-[var(--border-subtle)] bg-[var(--bg-elevated)]/60" />
     </div>
   );
 }
@@ -83,15 +96,32 @@ export function ResultGrid({
   onToggleSave,
   onResetEmpty,
 }: ResultGridProps) {
+  const effectiveCount = isLoading ? expectedCount : items.length;
+  const densityVariant: MusicCardVariant =
+    isFeaturedLayout && effectiveCount === 1
+      ? "featured"
+      : effectiveCount >= 4
+        ? "compact"
+        : "medium";
+
   if (isLoading) {
-    if (expectedCount === 1 && isFeaturedLayout) {
+    if (densityVariant === "featured") {
       return <FeaturedSkeleton />;
     }
     const skeletonTotal = Math.max(1, Math.min(10, expectedCount));
+    if (densityVariant === "compact") {
+      return (
+        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: skeletonTotal }).map((_, idx) => (
+            <CompactCardSkeleton key={`skeleton-compact-${idx}`} />
+          ))}
+        </div>
+      );
+    }
     return (
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: skeletonTotal }).map((_, idx) => (
-          <CardSkeleton key={`skeleton-${idx}`} />
+          <MediumCardSkeleton key={`skeleton-medium-${idx}`} />
         ))}
       </div>
     );
@@ -99,7 +129,7 @@ export function ResultGrid({
 
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-12 text-center">
+      <div className="rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-10 text-center">
         <p className="text-sm font-medium text-[var(--text-primary)]">
           Không tìm thấy kết quả phù hợp với bộ lọc hiện tại.
         </p>
@@ -118,17 +148,17 @@ export function ResultGrid({
 
   return (
     <AnimatePresence mode="wait">
-      {isFeaturedLayout && items.length === 1 ? (
+      {densityVariant === "featured" ? (
         <motion.div
           key={`featured-${items[0].id}-${animationKey}`}
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.24, ease: "easeOut" }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
         >
           <MusicCard
             item={items[0]}
-            featured
+            variant="featured"
             activeTrackId={activeTrackId}
             isGlobalPlaying={isGlobalPlaying}
             isGlobalLoading={isGlobalLoading}
@@ -143,26 +173,31 @@ export function ResultGrid({
         </motion.div>
       ) : (
         <motion.div
-          key={`grid-${animationKey}-${items.length}`}
+          key={`grid-${densityVariant}-${animationKey}-${items.length}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          transition={{ duration: 0.18 }}
+          className={
+            densityVariant === "compact"
+              ? "grid grid-cols-1 gap-3.5 md:grid-cols-2 xl:grid-cols-3"
+              : "mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          }
         >
           {items.map((item, idx) => (
             <motion.div
               key={`${item.id}-${idx}-${animationKey}`}
-              initial={{ opacity: 0, y: 14 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
-                duration: 0.24,
-                delay: Math.min(idx * 0.04, 0.32),
+                duration: 0.22,
+                delay: Math.min(idx * 0.035, 0.28),
                 ease: "easeOut",
               }}
             >
               <MusicCard
                 item={item}
+                variant={densityVariant}
                 activeTrackId={activeTrackId}
                 isGlobalPlaying={isGlobalPlaying}
                 isGlobalLoading={isGlobalLoading}

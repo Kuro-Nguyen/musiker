@@ -1,31 +1,31 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Bookmark,
-  BookmarkCheck,
   Disc3,
   Loader2,
-  Pause,
-  Play,
+  Minus,
+  Plus,
   Search,
+  Shuffle,
+  SlidersHorizontal,
   X,
 } from "lucide-react";
+import { SavedCrateDrawer } from "@/components/crate/SavedCrateDrawer";
 import { ControlPanel } from "@/components/discovery/ControlPanel";
-import { EqualizerBars } from "@/components/discovery/MusicCard";
+import { DailyPickBanner } from "@/components/discovery/DailyPickBanner";
 import { ResultGrid } from "@/components/discovery/ResultGrid";
 import { Header } from "@/components/layout/Header";
 import { MiniPlayer } from "@/components/layout/MiniPlayer";
 import { TasteQuizModal } from "@/components/quiz/TasteQuizModal";
 import {
+  BATCH_COUNT_PRESETS,
   DEFAULT_BATCH_COUNT,
   DEFAULT_DISCOVERY_LEVEL,
   DEFAULT_QUICK_FILTERS,
   DEFAULT_TASTE_PROFILE,
   ENTITY_OPTIONS,
-  MOCK_DAILY_PICK,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { usePlayerStore } from "@/store/usePlayerStore";
@@ -45,117 +45,6 @@ const LIVE_SEARCH_SUGGESTIONS = [
   "Radiohead",
   "Daft Punk",
 ];
-
-interface DailyPickItemCardProps {
-  badgeLabel: string;
-  item: MusicResultItem;
-  isPlaying: boolean;
-  isHydrating: boolean;
-  isSaved: boolean;
-  onPlayItem: (item: MusicResultItem) => void;
-  onToggleSave: (item: MusicResultItem) => void;
-}
-
-function DailyPickItemCard({
-  badgeLabel,
-  item,
-  isPlaying,
-  isHydrating,
-  isSaved,
-  onPlayItem,
-  onToggleSave,
-}: DailyPickItemCardProps) {
-  return (
-    <div className="group flex items-center justify-between gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 transition-colors hover:border-[var(--text-secondary)]/50">
-      <div className="flex min-w-0 items-center gap-3.5">
-        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">
-          <Image
-            src={item.coverUrl}
-            alt={`${item.title} - ${item.subtitle}`}
-            fill
-            sizes="64px"
-            unoptimized
-            className="object-cover"
-          />
-          {isPlaying && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/45">
-              <EqualizerBars />
-            </div>
-          )}
-        </div>
-
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-[var(--text-secondary)]">
-              {badgeLabel}
-            </span>
-            {item.releaseYear && (
-              <span className="font-mono text-[11px] text-[var(--text-secondary)]">
-                {item.releaseYear}
-              </span>
-            )}
-          </div>
-          <h3 className="mt-1 truncate text-sm font-semibold text-[var(--text-primary)]">
-            {item.title}
-          </h3>
-          <p className="truncate text-xs text-[var(--text-secondary)]">
-            {item.subtitle}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-1.5">
-        <button
-          type="button"
-          onClick={() => onPlayItem(item)}
-          disabled={isHydrating}
-          className={cn(
-            "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors cursor-pointer disabled:opacity-70",
-            isPlaying
-              ? "bg-[#FF5500] text-white"
-              : "border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-[var(--text-primary)] hover:border-[#FF5500] hover:text-[#FF5500]"
-          )}
-        >
-          {isHydrating ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              <span className="hidden sm:inline">Đang tải...</span>
-            </>
-          ) : isPlaying ? (
-            <>
-              <Pause className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Tạm dừng</span>
-            </>
-          ) : (
-            <>
-              <Play className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Nghe thử ngay</span>
-            </>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onToggleSave(item)}
-          aria-label={isSaved ? "Bỏ khỏi tủ nhạc" : "Lưu vào tủ"}
-          title={isSaved ? "Đã lưu vào tủ" : "Lưu vào tủ"}
-          className={cn(
-            "inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors cursor-pointer",
-            isSaved
-              ? "border-[#FF5500]/40 bg-[#FF5500]/10 text-[#FF5500]"
-              : "border-[var(--border-subtle)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-          )}
-        >
-          {isSaved ? (
-            <BookmarkCheck className="h-4 w-4" />
-          ) : (
-            <Bookmark className="h-4 w-4" />
-          )}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 interface DiscoverApiResult {
   items: MusicResultItem[];
@@ -183,9 +72,6 @@ export default function HomePage() {
     React.useState<boolean>(false);
   const [animationSeed, setAnimationSeed] = React.useState<number>(0);
   const [statusNotice, setStatusNotice] = React.useState<string | null>(null);
-  const [todayDate, setTodayDate] = React.useState<string>(
-    MOCK_DAILY_PICK.date
-  );
 
   // Stage 4: Live Discovery Engine State
   const [discoveredItems, setDiscoveredItems] = React.useState<
@@ -220,6 +106,8 @@ export default function HomePage() {
     savedItems,
     seenIds,
     hasHydrated,
+    isQuizOpen,
+    isCrateOpen,
     openQuiz,
     toggleSaveItem,
     addSeenIds,
@@ -232,14 +120,6 @@ export default function HomePage() {
     error: playerError,
     playTrack,
   } = usePlayerStore();
-
-  React.useEffect(() => {
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const dd = String(now.getDate()).padStart(2, "0");
-    setTodayDate(`${yyyy}-${mm}-${dd}`);
-  }, []);
 
   const effectiveTaste = hasHydrated ? tasteProfile : DEFAULT_TASTE_PROFILE;
   const effectiveSeenIds = React.useMemo(
@@ -471,9 +351,11 @@ export default function HomePage() {
     [runDiscover]
   );
 
-  // Keyboard shortcut: Space or R triggers Randomize when not focused on form inputs
+  // Keyboard shortcut: Space or R triggers Randomize when modals/drawers & inputs are inactive
   React.useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (isQuizOpen || isCrateOpen) return;
+
       const target = event.target as HTMLElement | null;
       const tag = target?.tagName?.toLowerCase();
       if (
@@ -494,7 +376,7 @@ export default function HomePage() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleRandomize]);
+  }, [handleRandomize, isQuizOpen, isCrateOpen]);
 
   const runLiveSearch = React.useCallback(
     async (queryToRun: string, typeToRun: EntityType) => {
@@ -556,15 +438,19 @@ export default function HomePage() {
     setBatchCount(clamped);
   };
 
+  const handleQuickBatchPreset = (preset: number) => {
+    setBatchCount(preset);
+    setStatusNotice(null);
+    void runDiscover({
+      overrideCount: preset,
+      userInitiated: false,
+    });
+  };
+
   const displayedResults = React.useMemo(() => {
     const source = liveResults !== null ? liveResults : discoveredItems;
     return source.map((item) => hydratedAlbums[item.id] ?? item);
   }, [liveResults, discoveredItems, hydratedAlbums]);
-
-  const dailyAlbum =
-    hydratedAlbums[MOCK_DAILY_PICK.album.id] ?? MOCK_DAILY_PICK.album;
-  const dailyTrack =
-    hydratedAlbums[MOCK_DAILY_PICK.track.id] ?? MOCK_DAILY_PICK.track;
 
   const isFeaturedLayout = liveResults === null && batchCount === 1;
   const activeResultsLoading = liveResults !== null ? isSearching : isDiscovering;
@@ -572,13 +458,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
       {/* Zone 1: Top Navigation Bar (64px) */}
-      <Header
-        onCrateClick={() => {
-          setStatusNotice(
-            `Tủ nhạc đã lưu trên localStorage hiện có ${savedIdSet.size} mục. Ngăn kéo SavedCrateDrawer (quản lý & xuất JSON/Text) sẽ hoàn thiện ở Giai đoạn 5.`
-          );
-        }}
-      />
+      <Header />
 
       <main
         className={cn(
@@ -603,221 +483,128 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Zone 2: Hero / Daily Pick Strip */}
-        <section aria-labelledby="daily-pick-heading" className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#FF5500]" />
-              <h2
-                id="daily-pick-heading"
-                className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]"
-              >
-                DAILY PICK • {todayDate}
-              </h2>
+        {/* Zone 1 (Top Priority): Quick Action Bar + Results Area */}
+        <section aria-label="Kết quả khám phá" className="space-y-4">
+          {/* Quick Action Bar right above results */}
+          <div className="flex flex-col gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 sm:p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex items-center gap-2">
+                <Disc3 className="h-4 w-4 text-[#FF5500]" />
+                <h2 className="font-mono text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-primary)]">
+                  {liveResults !== null
+                    ? `LIVE SEARCH // ${displayedResults.length} ITEMS`
+                    : isFeaturedLayout
+                      ? "FEATURED DISCOVERY"
+                      : `DISCOVERY GRID // ${displayedResults.length} ITEMS`}
+                </h2>
+              </div>
+              <span className="rounded bg-[var(--bg-elevated)] px-2 py-0.5 font-mono text-[10px] uppercase text-[var(--text-secondary)]">
+                {liveResults !== null
+                  ? `API // ${liveProvider ?? "ITUNES"}`
+                  : `${discoverProvider ?? "ENGINE"} • ${discoveryLevel}%${discoverPoolSize ? ` • ${discoverPoolSize} POOL` : ""}`}
+              </span>
             </div>
-            <span className="font-mono text-[11px] text-[var(--text-secondary)]">
-              2-HOP ENGINE ONLINE
-            </span>
-          </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <DailyPickItemCard
-              badgeLabel="Album hôm nay"
-              item={dailyAlbum}
-              isPlaying={
-                isGlobalPlaying &&
-                (currentTrack?.id === dailyAlbum.featuredTrack.id ||
-                  Boolean(
-                    dailyAlbum.tracklist?.some((t) => t.id === currentTrack?.id)
-                  ))
-              }
-              isHydrating={hydratingId === dailyAlbum.id}
-              isSaved={savedIdSet.has(dailyAlbum.id)}
-              onPlayItem={(item) => void handlePlayItem(item)}
-              onToggleSave={toggleSaveItem}
-            />
-            <DailyPickItemCard
-              badgeLabel="Bài hát hôm nay"
-              item={dailyTrack}
-              isPlaying={
-                isGlobalPlaying &&
-                currentTrack?.id === dailyTrack.featuredTrack.id
-              }
-              isHydrating={hydratingId === dailyTrack.id}
-              isSaved={savedIdSet.has(dailyTrack.id)}
-              onPlayItem={(item) => void handlePlayItem(item)}
-              onToggleSave={toggleSaveItem}
-            />
-          </div>
-        </section>
-
-        {/* Zone 3: Discovery Control Panel */}
-        <ControlPanel
-          filters={filters}
-          discoveryLevel={discoveryLevel}
-          batchCount={batchCount}
-          isDiscovering={isDiscovering}
-          autoPlayOnRandom={autoPlayOnRandom}
-          isLiveSearchOpen={isLiveSearchOpen}
-          tasteProfile={effectiveTaste}
-          onChangeEntityType={handleChangeEntityType}
-          onChangeFilters={(updater) => setFilters(updater)}
-          onResetFilters={handleResetFilters}
-          onChangeDiscoveryLevel={setDiscoveryLevel}
-          onChangeBatchCount={handleBatchCountChange}
-          onToggleAutoPlay={() => setAutoPlayOnRandom((prev) => !prev)}
-          onToggleLiveSearch={() => setIsLiveSearchOpen((prev) => !prev)}
-          onOpenQuiz={openQuiz}
-          onRandomize={handleRandomize}
-        />
-
-        {/* Collapsible Live Music Search Strip */}
-        <AnimatePresence>
-          {isLiveSearchOpen && (
-            <motion.section
-              aria-label="Tìm kiếm nhạc trực tiếp qua API"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 sm:p-5">
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Search className="h-3.5 w-3.5 text-[#FF5500]" />
-                      <span className="text-xs font-semibold text-[var(--text-primary)]">
-                        Tìm kiếm nhanh Live Music API
-                      </span>
-                      <span className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-secondary)]">
-                        /api/music/search
-                      </span>
-                    </div>
-                    {liveResults !== null && (
-                      <button
-                        type="button"
-                        onClick={handleClearLiveSearch}
-                        className="inline-flex items-center gap-1 font-mono text-[11px] text-[#FF5500] hover:underline cursor-pointer"
-                      >
-                        <X className="h-3 w-3" />
-                        <span>Quay lại Discovery Engine</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <form
-                    onSubmit={handleSearchSubmit}
-                    className="flex flex-col gap-2.5 sm:flex-row sm:items-center"
-                  >
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Tìm Album, Bài hát hoặc Nghệ sĩ thật (VD: Frank Ocean, Nujabes, Sơn Tùng M-TP)..."
-                        aria-label="Từ khóa tìm kiếm nhạc"
-                        className="h-10 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] pl-3.5 pr-9 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] outline-none transition-colors focus:border-[#FF5500]"
-                      />
-                      {searchQuery && (
-                        <button
-                          type="button"
-                          onClick={handleClearLiveSearch}
-                          aria-label="Xóa từ khóa"
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="inline-flex shrink-0 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-1">
-                      {ENTITY_OPTIONS.map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => {
-                            setSearchType(option.value);
-                            if (searchQuery.trim()) {
-                              void runLiveSearch(searchQuery, option.value);
-                            }
-                          }}
-                          className={cn(
-                            "rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer",
-                            searchType === option.value
-                              ? "bg-[var(--accent-primary)] text-[var(--accent-foreground)]"
-                              : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                          )}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+              {/* Quick Entity Switcher */}
+              <div
+                role="tablist"
+                aria-label="Chọn nhanh loại nội dung"
+                className="inline-flex rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-0.5"
+              >
+                {ENTITY_OPTIONS.map((option) => {
+                  const active = filters.entityType === option.value;
+                  return (
                     <button
-                      type="submit"
-                      disabled={isSearching || !searchQuery.trim()}
-                      className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-[var(--accent-primary)] px-4 text-xs font-semibold text-[var(--accent-foreground)] transition-opacity hover:opacity-90 disabled:opacity-45 cursor-pointer disabled:cursor-not-allowed"
-                    >
-                      {isSearching ? (
-                        <>
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          <span>Đang tìm...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Search className="h-3.5 w-3.5" />
-                          <span>Tìm</span>
-                        </>
+                      key={option.value}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => handleChangeEntityType(option.value)}
+                      className={cn(
+                        "rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer",
+                        active
+                          ? "bg-[var(--accent-primary)] text-[var(--accent-foreground)]"
+                          : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                       )}
+                    >
+                      {option.label}
                     </button>
-                  </form>
+                  );
+                })}
+              </div>
 
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--text-secondary)]">
-                      Gợi ý:
-                    </span>
-                    {LIVE_SEARCH_SUGGESTIONS.map((chip) => (
-                      <button
-                        key={chip}
-                        type="button"
-                        onClick={() => {
-                          setSearchQuery(chip);
-                          void runLiveSearch(chip, searchType);
-                        }}
-                        className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2 py-0.5 text-[11px] text-[var(--text-secondary)] transition-colors hover:border-[#FF5500] hover:text-[var(--text-primary)] cursor-pointer"
-                      >
-                        {chip}
-                      </button>
-                    ))}
-                  </div>
+              {/* Quick Count Stepper + Presets */}
+              <div className="flex items-center gap-1">
+                <div className="inline-flex items-center rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)]">
+                  <button
+                    type="button"
+                    onClick={() => handleBatchCountChange(batchCount - 1)}
+                    disabled={batchCount <= 1}
+                    aria-label="Giảm số lượng nhanh"
+                    className="inline-flex h-8 w-7 items-center justify-center text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] disabled:opacity-35 cursor-pointer"
+                  >
+                    <Minus className="h-3 w-3" />
+                  </button>
+                  <span className="w-6 text-center font-mono text-xs font-semibold text-[var(--text-primary)]">
+                    {batchCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleBatchCountChange(batchCount + 1)}
+                    disabled={batchCount >= 10}
+                    aria-label="Tăng số lượng nhanh"
+                    className="inline-flex h-8 w-7 items-center justify-center text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] disabled:opacity-35 cursor-pointer"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                </div>
+
+                <div className="hidden items-center gap-1 sm:flex">
+                  {BATCH_COUNT_PRESETS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleQuickBatchPreset(preset)}
+                      className={cn(
+                        "h-8 min-w-[30px] rounded-lg border px-1.5 font-mono text-[11px] font-semibold transition-colors cursor-pointer",
+                        batchCount === preset
+                          ? "border-[#FF5500] bg-[#FF5500]/12 text-[#FF5500]"
+                          : "border-[var(--border-subtle)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                      )}
+                    >
+                      {preset}
+                    </button>
+                  ))}
                 </div>
               </div>
-            </motion.section>
-          )}
-        </AnimatePresence>
 
-        {/* Zone 4: Results Area */}
-        <section aria-label="Kết quả khám phá" className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Disc3 className="h-4 w-4 text-[#FF5500]" />
-              <h2 className="font-mono text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-secondary)]">
-                {liveResults !== null
-                  ? `LIVE SEARCH RESULTS // ${displayedResults.length} ITEMS`
-                  : isFeaturedLayout
-                    ? "FEATURED DISCOVERY"
-                    : `DISCOVERY GRID // ${displayedResults.length} ITEMS`}
-              </h2>
+              {/* Quick Randomize CTA */}
+              <button
+                type="button"
+                onClick={handleRandomize}
+                disabled={isDiscovering}
+                className="group inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#FF5500] px-3.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#E64D00] disabled:opacity-75 cursor-pointer"
+              >
+                {isDiscovering ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Shuffle className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-180" />
+                )}
+                <span>Randomize</span>
+                <kbd className="hidden rounded bg-black/20 px-1 py-0.5 font-mono text-[9px] md:inline">
+                  SPACE
+                </kbd>
+              </button>
+
+              <a
+                href="#controls-panel"
+                className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2.5 text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              >
+                <SlidersHorizontal className="h-3 w-3" />
+                <span className="hidden sm:inline">Bộ lọc &amp; Gu</span>
+              </a>
             </div>
-
-            <span className="font-mono text-[11px] uppercase text-[var(--text-secondary)]">
-              {liveResults !== null
-                ? `LIVE SEARCH // ${liveProvider ?? "ITUNES"}`
-                : discoverProvider
-                  ? `DISCOVER ENGINE // ${discoverProvider}${discoverPoolSize ? ` (${discoverPoolSize} CANDIDATES)` : ""}`
-                  : "DISCOVER ENGINE // INITIALIZING"}
-            </span>
           </div>
 
           <ResultGrid
@@ -845,10 +632,174 @@ export default function HomePage() {
             }
           />
         </section>
+
+        {/* Zone 2: Detailed Control Panel & Live Search */}
+        <div id="controls-panel" className="scroll-mt-20 space-y-4">
+          <ControlPanel
+            filters={filters}
+            discoveryLevel={discoveryLevel}
+            batchCount={batchCount}
+            isDiscovering={isDiscovering}
+            autoPlayOnRandom={autoPlayOnRandom}
+            isLiveSearchOpen={isLiveSearchOpen}
+            tasteProfile={effectiveTaste}
+            onChangeEntityType={handleChangeEntityType}
+            onChangeFilters={(updater) => setFilters(updater)}
+            onResetFilters={handleResetFilters}
+            onChangeDiscoveryLevel={setDiscoveryLevel}
+            onChangeBatchCount={handleBatchCountChange}
+            onToggleAutoPlay={() => setAutoPlayOnRandom((prev) => !prev)}
+            onToggleLiveSearch={() => setIsLiveSearchOpen((prev) => !prev)}
+            onOpenQuiz={openQuiz}
+            onRandomize={handleRandomize}
+          />
+
+          {/* Collapsible Live Music Search Strip */}
+          <AnimatePresence>
+            {isLiveSearchOpen && (
+              <motion.section
+                aria-label="Tìm kiếm nhạc trực tiếp qua API"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 sm:p-5">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Search className="h-3.5 w-3.5 text-[#FF5500]" />
+                        <span className="text-xs font-semibold text-[var(--text-primary)]">
+                          Tìm kiếm nhanh Live Music API
+                        </span>
+                        <span className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-secondary)]">
+                          /api/music/search
+                        </span>
+                      </div>
+                      {liveResults !== null && (
+                        <button
+                          type="button"
+                          onClick={handleClearLiveSearch}
+                          className="inline-flex items-center gap-1 font-mono text-[11px] text-[#FF5500] hover:underline cursor-pointer"
+                        >
+                          <X className="h-3 w-3" />
+                          <span>Quay lại Discovery Engine</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <form
+                      onSubmit={handleSearchSubmit}
+                      className="flex flex-col gap-2.5 sm:flex-row sm:items-center"
+                    >
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Tìm Album, Bài hát hoặc Nghệ sĩ thật (VD: Frank Ocean, Nujabes, Sơn Tùng M-TP)..."
+                          aria-label="Từ khóa tìm kiếm nhạc"
+                          className="h-10 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] pl-3.5 pr-9 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] outline-none transition-colors focus:border-[#FF5500]"
+                        />
+                        {searchQuery && (
+                          <button
+                            type="button"
+                            onClick={handleClearLiveSearch}
+                            aria-label="Xóa từ khóa"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="inline-flex shrink-0 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-1">
+                        {ENTITY_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => {
+                              setSearchType(option.value);
+                              if (searchQuery.trim()) {
+                                void runLiveSearch(searchQuery, option.value);
+                              }
+                            }}
+                            className={cn(
+                              "rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer",
+                              searchType === option.value
+                                ? "bg-[var(--accent-primary)] text-[var(--accent-foreground)]"
+                                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                            )}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isSearching || !searchQuery.trim()}
+                        className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-[var(--accent-primary)] px-4 text-xs font-semibold text-[var(--accent-foreground)] transition-opacity hover:opacity-90 disabled:opacity-45 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        {isSearching ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <span>Đang tìm...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Search className="h-3.5 w-3.5" />
+                            <span>Tìm</span>
+                          </>
+                        )}
+                      </button>
+                    </form>
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--text-secondary)]">
+                        Gợi ý:
+                      </span>
+                      {LIVE_SEARCH_SUGGESTIONS.map((chip) => (
+                        <button
+                          key={chip}
+                          type="button"
+                          onClick={() => {
+                            setSearchQuery(chip);
+                            void runLiveSearch(chip, searchType);
+                          }}
+                          className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2 py-0.5 text-[11px] text-[var(--text-secondary)] transition-colors hover:border-[#FF5500] hover:text-[var(--text-primary)] cursor-pointer"
+                        >
+                          {chip}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </motion.section>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Zone 3 (Bottom): Daily Pick Strip (Locked per YYYY-MM-DD) */}
+        <DailyPickBanner
+          activeTrackId={currentTrack?.id ?? null}
+          isGlobalPlaying={isGlobalPlaying}
+          hydratingId={hydratingId}
+          savedIdSet={savedIdSet}
+          onPlayItem={(item) => void handlePlayItem(item)}
+          onPlaySpecificTrack={(track, item) =>
+            void handlePlaySpecificTrack(track, item)
+          }
+          onToggleSave={toggleSaveItem}
+        />
       </main>
 
       {/* Taste Quiz Modal (5 Steps -> localStorage) */}
       <TasteQuizModal onComplete={handleQuizComplete} />
+
+      {/* Saved Crate Drawer (Play All + JSON/TXT/Copy Export) */}
+      <SavedCrateDrawer onPlayItem={(item) => void handlePlayItem(item)} />
 
       {/* Singleton Audio Mini-Player */}
       <MiniPlayer />
