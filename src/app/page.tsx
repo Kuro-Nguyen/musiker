@@ -70,8 +70,11 @@ export default function HomePage() {
     React.useState<boolean>(false);
   const [isLiveSearchOpen, setIsLiveSearchOpen] =
     React.useState<boolean>(false);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] =
+    React.useState<boolean>(false);
   const [animationSeed, setAnimationSeed] = React.useState<number>(0);
   const [statusNotice, setStatusNotice] = React.useState<string | null>(null);
+  const controlsSectionRef = React.useRef<HTMLDivElement | null>(null);
 
   // Stage 4: Live Discovery Engine State
   const [discoveredItems, setDiscoveredItems] = React.useState<
@@ -454,24 +457,46 @@ export default function HomePage() {
 
   const isFeaturedLayout = liveResults === null && batchCount === 1;
   const activeResultsLoading = liveResults !== null ? isSearching : isDiscovering;
+  const activeFilterCount = [
+    filters.region !== "all",
+    filters.mood !== "all",
+    filters.popularity !== "all",
+    filters.era !== "all",
+    discoveryLevel !== DEFAULT_DISCOVERY_LEVEL,
+  ].filter(Boolean).length;
+
+  const handleOpenMobileFilters = () => {
+    setIsMobileFiltersOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        window.requestAnimationFrame(() => {
+          controlsSectionRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        });
+      }
+      return next;
+    });
+  };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
-      {/* Zone 1: Top Navigation Bar (64px) */}
+    <div className="min-h-dvh bg-[var(--bg-primary)] text-[var(--text-primary)]">
+      {/* Zone 1: Top Navigation Bar */}
       <Header />
 
       <main
         className={cn(
-          "mx-auto max-w-7xl space-y-8 px-4 pt-6 sm:px-6 lg:px-8",
-          currentTrack ? "pb-36 sm:pb-28" : "pb-20"
+          "mx-auto max-w-7xl space-y-5 px-3 pt-4 sm:space-y-8 sm:px-6 sm:pt-6 lg:px-8",
+          currentTrack ? "pb-36 sm:pb-28" : "pb-16"
         )}
       >
         {/* Status Banner */}
         {statusNotice && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-[#FF5500]/30 bg-[#FF5500]/8 px-4 py-2.5 text-xs text-[var(--text-primary)]">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-[#FF5500]/30 bg-[#FF5500]/8 px-3.5 py-2.5 text-xs text-[var(--text-primary)] sm:px-4">
+            <div className="flex min-w-0 items-center gap-2">
               <span className="h-2 w-2 shrink-0 rounded-full bg-[#FF5500]" />
-              <span>{statusNotice}</span>
+              <span className="min-w-0 break-words">{statusNotice}</span>
             </div>
             <button
               type="button"
@@ -484,12 +509,12 @@ export default function HomePage() {
         )}
 
         {/* Zone 1 (Top Priority): Quick Action Bar + Results Area */}
-        <section aria-label="Kết quả khám phá" className="space-y-4">
+        <section aria-label="Kết quả khám phá" className="space-y-3.5 sm:space-y-4">
           {/* Quick Action Bar right above results */}
-          <div className="flex flex-col gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 sm:p-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-col gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 sm:p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-start sm:gap-2.5">
               <div className="flex items-center gap-2">
-                <Disc3 className="h-4 w-4 text-[#FF5500]" />
+                <Disc3 className="h-4 w-4 shrink-0 text-[#FF5500]" />
                 <h2 className="font-mono text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-primary)]">
                   {liveResults !== null
                     ? `LIVE SEARCH // ${displayedResults.length} ITEMS`
@@ -505,12 +530,12 @@ export default function HomePage() {
               </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
               {/* Quick Entity Switcher */}
               <div
                 role="tablist"
                 aria-label="Chọn nhanh loại nội dung"
-                className="inline-flex rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-0.5"
+                className="grid w-full grid-cols-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-1 sm:inline-flex sm:w-auto sm:p-0.5"
               >
                 {ENTITY_OPTIONS.map((option) => {
                   const active = filters.entityType === option.value;
@@ -522,7 +547,7 @@ export default function HomePage() {
                       aria-selected={active}
                       onClick={() => handleChangeEntityType(option.value)}
                       className={cn(
-                        "rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer",
+                        "min-h-9 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer sm:min-h-0 sm:text-[11px]",
                         active
                           ? "bg-[var(--accent-primary)] text-[var(--accent-foreground)]"
                           : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -534,76 +559,103 @@ export default function HomePage() {
                 })}
               </div>
 
-              {/* Quick Count Stepper + Presets */}
-              <div className="flex items-center gap-1">
-                <div className="inline-flex items-center rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)]">
-                  <button
-                    type="button"
-                    onClick={() => handleBatchCountChange(batchCount - 1)}
-                    disabled={batchCount <= 1}
-                    aria-label="Giảm số lượng nhanh"
-                    className="inline-flex h-8 w-7 items-center justify-center text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] disabled:opacity-35 cursor-pointer"
-                  >
-                    <Minus className="h-3 w-3" />
-                  </button>
-                  <span className="w-6 text-center font-mono text-xs font-semibold text-[var(--text-primary)]">
-                    {batchCount}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleBatchCountChange(batchCount + 1)}
-                    disabled={batchCount >= 10}
-                    aria-label="Tăng số lượng nhanh"
-                    className="inline-flex h-8 w-7 items-center justify-center text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] disabled:opacity-35 cursor-pointer"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </button>
+              {/* Count Controls + Mobile Filters / Search Shortcut */}
+              <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-start">
+                <div className="flex items-center gap-1.5">
+                  <div className="inline-flex items-center rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)]">
+                    <button
+                      type="button"
+                      onClick={() => handleBatchCountChange(batchCount - 1)}
+                      disabled={batchCount <= 1}
+                      aria-label="Giảm số lượng nhanh"
+                      className="inline-flex h-9 w-8 items-center justify-center text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] disabled:opacity-35 cursor-pointer sm:h-8 sm:w-7"
+                    >
+                      <Minus className="h-3 w-3" />
+                    </button>
+                    <span className="w-6 text-center font-mono text-xs font-semibold text-[var(--text-primary)]">
+                      {batchCount}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleBatchCountChange(batchCount + 1)}
+                      disabled={batchCount >= 10}
+                      aria-label="Tăng số lượng nhanh"
+                      className="inline-flex h-9 w-8 items-center justify-center text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] disabled:opacity-35 cursor-pointer sm:h-8 sm:w-7"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    {BATCH_COUNT_PRESETS.map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => handleQuickBatchPreset(preset)}
+                        className={cn(
+                          "h-9 min-w-[32px] rounded-lg border px-1.5 font-mono text-[11px] font-semibold transition-colors cursor-pointer sm:h-8 sm:min-w-[30px]",
+                          batchCount === preset
+                            ? "border-[#FF5500] bg-[#FF5500]/12 text-[#FF5500]"
+                            : "border-[var(--border-subtle)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                        )}
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="hidden items-center gap-1 sm:flex">
-                  {BATCH_COUNT_PRESETS.map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => handleQuickBatchPreset(preset)}
-                      className={cn(
-                        "h-8 min-w-[30px] rounded-lg border px-1.5 font-mono text-[11px] font-semibold transition-colors cursor-pointer",
-                        batchCount === preset
-                          ? "border-[#FF5500] bg-[#FF5500]/12 text-[#FF5500]"
-                          : "border-[var(--border-subtle)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                      )}
-                    >
-                      {preset}
-                    </button>
-                  ))}
+                {/* Mobile-only Filter Drawer Toggle (< lg) */}
+                <div className="flex items-center gap-1.5 lg:hidden">
+                  <button
+                    type="button"
+                    onClick={handleOpenMobileFilters}
+                    aria-expanded={isMobileFiltersOpen}
+                    className={cn(
+                      "inline-flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-medium transition-colors cursor-pointer",
+                      isMobileFiltersOpen || activeFilterCount > 0
+                        ? "border-[#FF5500]/50 bg-[#FF5500]/10 text-[#FF5500]"
+                        : "border-[var(--border-subtle)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    )}
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                    <span>Bộ lọc</span>
+                    {activeFilterCount > 0 && (
+                      <span className="rounded bg-[#FF5500] px-1 font-mono text-[10px] font-semibold text-white">
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </button>
                 </div>
               </div>
 
-              {/* Quick Randomize CTA */}
-              <button
-                type="button"
-                onClick={handleRandomize}
-                disabled={isDiscovering}
-                className="group inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#FF5500] px-3.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#E64D00] disabled:opacity-75 cursor-pointer"
-              >
-                {isDiscovering ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Shuffle className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-180" />
-                )}
-                <span>Randomize</span>
-                <kbd className="hidden rounded bg-black/20 px-1 py-0.5 font-mono text-[9px] md:inline">
-                  SPACE
-                </kbd>
-              </button>
+              {/* Quick Randomize CTA + Desktop Filter Jump */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleRandomize}
+                  disabled={isDiscovering}
+                  className="group inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#FF5500] px-4 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#E64D00] active:scale-[0.99] disabled:opacity-75 cursor-pointer sm:h-8 sm:flex-none sm:px-3.5"
+                >
+                  {isDiscovering ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Shuffle className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-180" />
+                  )}
+                  <span>Randomize</span>
+                  <kbd className="hidden rounded bg-black/20 px-1 py-0.5 font-mono text-[9px] md:inline">
+                    SPACE
+                  </kbd>
+                </button>
 
-              <a
-                href="#controls-panel"
-                className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2.5 text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              >
-                <SlidersHorizontal className="h-3 w-3" />
-                <span className="hidden sm:inline">Bộ lọc &amp; Gu</span>
-              </a>
+                <a
+                  href="#controls-panel"
+                  className="hidden h-8 items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2.5 text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] lg:inline-flex"
+                >
+                  <SlidersHorizontal className="h-3 w-3" />
+                  <span>Bộ lọc &amp; Gu</span>
+                </a>
+              </div>
             </div>
           </div>
 
@@ -634,7 +686,11 @@ export default function HomePage() {
         </section>
 
         {/* Zone 2: Detailed Control Panel & Live Search */}
-        <div id="controls-panel" className="scroll-mt-20 space-y-4">
+        <div
+          id="controls-panel"
+          ref={controlsSectionRef}
+          className="scroll-mt-20 space-y-4"
+        >
           <ControlPanel
             filters={filters}
             discoveryLevel={discoveryLevel}
@@ -643,6 +699,10 @@ export default function HomePage() {
             autoPlayOnRandom={autoPlayOnRandom}
             isLiveSearchOpen={isLiveSearchOpen}
             tasteProfile={effectiveTaste}
+            isMobileExpanded={isMobileFiltersOpen}
+            onToggleMobileExpanded={() =>
+              setIsMobileFiltersOpen((prev) => !prev)
+            }
             onChangeEntityType={handleChangeEntityType}
             onChangeFilters={(updater) => setFilters(updater)}
             onResetFilters={handleResetFilters}
@@ -700,21 +760,21 @@ export default function HomePage() {
                           onChange={(e) => setSearchQuery(e.target.value)}
                           placeholder="Tìm Album, Bài hát hoặc Nghệ sĩ thật (VD: Frank Ocean, Nujabes, Sơn Tùng M-TP)..."
                           aria-label="Từ khóa tìm kiếm nhạc"
-                          className="h-10 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] pl-3.5 pr-9 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] outline-none transition-colors focus:border-[#FF5500]"
+                          className="h-11 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] pl-3.5 pr-10 text-base text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] outline-none transition-colors focus:border-[#FF5500] sm:h-10 sm:pr-9 sm:text-xs"
                         />
                         {searchQuery && (
                           <button
                             type="button"
                             onClick={handleClearLiveSearch}
                             aria-label="Xóa từ khóa"
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer sm:right-2.5"
                           >
-                            <X className="h-3.5 w-3.5" />
+                            <X className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                           </button>
                         )}
                       </div>
 
-                      <div className="inline-flex shrink-0 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-1">
+                      <div className="grid shrink-0 grid-cols-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-1 sm:inline-flex">
                         {ENTITY_OPTIONS.map((option) => (
                           <button
                             key={option.value}
@@ -726,7 +786,7 @@ export default function HomePage() {
                               }
                             }}
                             className={cn(
-                              "rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer",
+                              "min-h-9 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer sm:min-h-0 sm:text-[11px]",
                               searchType === option.value
                                 ? "bg-[var(--accent-primary)] text-[var(--accent-foreground)]"
                                 : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -740,7 +800,7 @@ export default function HomePage() {
                       <button
                         type="submit"
                         disabled={isSearching || !searchQuery.trim()}
-                        className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-[var(--accent-primary)] px-4 text-xs font-semibold text-[var(--accent-foreground)] transition-opacity hover:opacity-90 disabled:opacity-45 cursor-pointer disabled:cursor-not-allowed"
+                        className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-[var(--accent-primary)] px-4 text-xs font-semibold text-[var(--accent-foreground)] transition-opacity hover:opacity-90 disabled:opacity-45 cursor-pointer disabled:cursor-not-allowed sm:h-10"
                       >
                         {isSearching ? (
                           <>

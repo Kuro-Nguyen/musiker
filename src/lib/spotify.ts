@@ -220,7 +220,7 @@ interface SpotifySearchResponse {
   tracks?: { items?: SpotifyTrackFull[] };
 }
 
-function pickSpotifyCover(images?: SpotifyImage[], fallbackLabel = "MUSIKER"): string {
+function pickSpotifyCover(images?: SpotifyImage[], fallbackLabel = "MUZIKER"): string {
   const best = images?.find((img) => Boolean(img.url))?.url;
   if (best) return best;
   return createSpotifyFallbackSvg(fallbackLabel);

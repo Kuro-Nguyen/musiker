@@ -343,7 +343,7 @@ function DimensionStepView({
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
           aria-label={config.title}
-          className="musiker-slider"
+          className="muziker-slider"
           style={{
             background: `linear-gradient(to right, #FF5500 0%, #FF5500 ${value}%, var(--border-subtle) ${value}%, var(--border-subtle) 100%)`,
           }}
@@ -564,37 +564,37 @@ export function TasteQuizModal({ onComplete }: TasteQuizModalProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) closeQuiz();
           }}
         >
           <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+            initial={{ opacity: 0, y: 24, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+            exit={{ opacity: 0, y: 16, scale: 0.98 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-2xl"
+            className="flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-2xl sm:max-h-[90dvh] sm:rounded-2xl"
           >
             {/* Modal Header */}
-            <div className="border-b border-[var(--border-subtle)] px-5 py-4 sm:px-6">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#FF5500]" />
+            <div className="border-b border-[var(--border-subtle)] px-4 py-3.5 sm:px-6 sm:py-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#FF5500]" />
                   <h2
                     id="taste-quiz-title"
-                    className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-primary)]"
+                    className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-primary)] sm:text-xs sm:tracking-[0.14em]"
                   >
                     TASTE PROFILE // STEP 0{step} / 05
                   </h2>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   {tasteProfile.isCompleted && (
                     <button
                       type="button"
                       onClick={handleReset}
-                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--border-subtle)] px-2.5 text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                      className="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--border-subtle)] px-2.5 text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer sm:h-8"
                     >
                       <RotateCcw className="h-3 w-3" />
                       <span>Đặt lại</span>
@@ -603,7 +603,7 @@ export function TasteQuizModal({ onComplete }: TasteQuizModalProps) {
                   <button
                     type="button"
                     onClick={closeQuiz}
-                    className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--border-subtle)] px-2.5 text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                    className="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--border-subtle)] px-2.5 text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer sm:h-8"
                   >
                     <span>Bỏ qua</span>
                     <X className="h-3.5 w-3.5" />
@@ -626,7 +626,7 @@ export function TasteQuizModal({ onComplete }: TasteQuizModalProps) {
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+            <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={`quiz-step-${step}`}
@@ -658,7 +658,7 @@ export function TasteQuizModal({ onComplete }: TasteQuizModalProps) {
                           value={artistQuery}
                           onChange={(e) => setArtistQuery(e.target.value)}
                           placeholder="Tìm nghệ sĩ bất kỳ (VD: Arctic Monkeys, Ngọt, Tyler, The Creator)..."
-                          className="h-10 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] pl-9 pr-9 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] outline-none focus:border-[#FF5500]"
+                          className="h-11 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] pl-9 pr-10 text-base text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] outline-none focus:border-[#FF5500] sm:h-10 sm:pr-9 sm:text-xs"
                         />
                         {artistQuery && (
                           <button
@@ -920,7 +920,7 @@ export function TasteQuizModal({ onComplete }: TasteQuizModalProps) {
             </div>
 
             {/* Modal Footer */}
-            <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-primary)]/60 px-5 py-3.5 sm:px-6">
+            <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-primary)]/60 px-4 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom,0px))] sm:px-6 sm:py-3.5">
               {stepWarning && (
                 <p className="mb-2.5 text-xs font-medium text-[#FF5500]">
                   {stepWarning}
@@ -933,7 +933,7 @@ export function TasteQuizModal({ onComplete }: TasteQuizModalProps) {
                     <button
                       type="button"
                       onClick={handlePrev}
-                      className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] cursor-pointer"
+                      className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] cursor-pointer sm:h-10"
                     >
                       <ArrowLeft className="h-3.5 w-3.5" />
                       <span>Quay lại</span>
@@ -952,7 +952,7 @@ export function TasteQuizModal({ onComplete }: TasteQuizModalProps) {
                     type="button"
                     onClick={handleNext}
                     disabled={step === 1 && seedArtists.length < 3}
-                    className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-5 text-xs font-semibold text-[var(--accent-foreground)] transition-opacity hover:opacity-90 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                    className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-[var(--accent-primary)] px-5 text-xs font-semibold text-[var(--accent-foreground)] transition-opacity hover:opacity-90 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed sm:h-10"
                   >
                     <span>Tiếp tục</span>
                     <ArrowRight className="h-3.5 w-3.5" />
@@ -961,7 +961,7 @@ export function TasteQuizModal({ onComplete }: TasteQuizModalProps) {
                   <button
                     type="button"
                     onClick={handleFinish}
-                    className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#FF5500] px-5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#E64D00] cursor-pointer"
+                    className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#FF5500] px-5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#E64D00] cursor-pointer sm:h-10"
                   >
                     <Sparkles className="h-3.5 w-3.5" />
                     <span>Hoàn tất &amp; Tạo gợi ý</span>

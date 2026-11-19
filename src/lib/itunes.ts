@@ -36,7 +36,7 @@ function setCached<T>(key: string, value: T, ttlMs = CACHE_TTL_MS): void {
 }
 
 function createFallbackCoverSvg(label: string): string {
-  const safeLabel = label.replace(/[<>&"']/g, "").slice(0, 18) || "MUSIKER";
+  const safeLabel = label.replace(/[<>&"']/g, "").slice(0, 18) || "MUZIKER";
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
     <rect width="600" height="600" fill="#141417"/>
     <circle cx="300" cy="300" r="145" fill="none" stroke="#F4F4F6" stroke-opacity="0.2" stroke-width="2"/>
@@ -53,7 +53,7 @@ function createFallbackCoverSvg(label: string): string {
 export function upgradeItunesArtwork(
   url?: string,
   size = 600,
-  fallbackLabel = "MUSIKER"
+  fallbackLabel = "MUZIKER"
 ): string {
   if (!url) {
     return createFallbackCoverSvg(fallbackLabel);

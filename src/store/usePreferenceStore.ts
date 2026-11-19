@@ -1,13 +1,43 @@
 "use client";
 
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+import {
+  createJSONStorage,
+  persist,
+  type StateStorage,
+} from "zustand/middleware";
 import { DEFAULT_TASTE_PROFILE, MAX_SEEN_IDS } from "@/lib/constants";
 import type {
   DailyPickData,
   MusicResultItem,
   TasteProfile,
 } from "@/types/music";
+
+const STORAGE_KEY = "muziker-preferences-v1";
+const LEGACY_STORAGE_KEY = "musiker-preferences-v1";
+
+function createMigratingStorage(): StateStorage {
+  return {
+    getItem: (name) => {
+      if (typeof window === "undefined") return null;
+      const current = window.localStorage.getItem(name);
+      if (current !== null) return current;
+      const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacy !== null) {
+        window.localStorage.setItem(name, legacy);
+      }
+      return legacy;
+    },
+    setItem: (name, value) => {
+      if (typeof window === "undefined") return;
+      window.localStorage.setItem(name, value);
+    },
+    removeItem: (name) => {
+      if (typeof window === "undefined") return;
+      window.localStorage.removeItem(name);
+    },
+  };
+}
 
 interface PreferenceState {
   // Persisted to localStorage
@@ -111,8 +141,8 @@ export const usePreferenceStore = create<PreferenceState>()(
       setDailyPick: (pick) => set({ dailyPick: pick }),
     }),
     {
-      name: "musiker-preferences-v1",
-      storage: createJSONStorage(() => localStorage),
+      name: STORAGE_KEY,
+      storage: createJSONStorage(() => createMigratingStorage()),
       partialize: (state) => ({
         tasteProfile: state.tasteProfile,
         dailyPick: state.dailyPick,

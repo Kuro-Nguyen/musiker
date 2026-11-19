@@ -660,7 +660,7 @@ async function generateCandidatePool(
           const country = storefronts[idx % storefronts.length];
           const offset =
             req.filters.entityType === "track" &&
-            (seed.isDeepCut || req.discoveryLevel >= 60)
+              (seed.isDeepCut || req.discoveryLevel >= 60)
               ? [0, 3, 6][Math.floor(Math.random() * 3)]
               : 0;
 
@@ -683,14 +683,14 @@ async function generateCandidatePool(
     req.filters.entityType === "artist" || chartCountries.length === 0
       ? Promise.resolve([] as MusicResultItem[][])
       : Promise.all(
-          chartCountries.map((country) =>
-            fetchItunesRegionalChart(
-              country,
-              req.filters.entityType as "album" | "track",
-              20
-            )
+        chartCountries.map((country) =>
+          fetchItunesRegionalChart(
+            country,
+            req.filters.entityType as "album" | "track",
+            20
           )
-        ),
+        )
+      ),
   ]);
 
   const activeProvider =

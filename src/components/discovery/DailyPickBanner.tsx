@@ -94,9 +94,9 @@ function DailyPickCard({
 
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] transition-colors hover:border-[var(--text-secondary)]/50">
-      <div className="flex items-center justify-between gap-3 p-3.5">
-        <div className="flex min-w-0 items-center gap-3.5">
-          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">
+      <div className="flex items-center justify-between gap-2.5 p-3 sm:gap-3 sm:p-3.5">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] sm:h-16 sm:w-16">
             <Image
               src={item.coverUrl}
               alt={`${item.title} - ${item.subtitle}`}
@@ -112,7 +112,7 @@ function DailyPickCard({
             )}
           </div>
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-[var(--text-secondary)]">
                 {badgeLabel}
@@ -137,8 +137,9 @@ function DailyPickCard({
             type="button"
             onClick={() => onPlayItem(item)}
             disabled={isHydrating}
+            aria-label={isCardPlaying ? `Tạm dừng ${item.title}` : `Nghe thử ${item.title}`}
             className={cn(
-              "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors cursor-pointer disabled:opacity-70",
+              "touch-target inline-flex h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors cursor-pointer disabled:opacity-70 sm:h-9",
               isCardPlaying
                 ? "bg-[#FF5500] text-white"
                 : "border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-[var(--text-primary)] hover:border-[#FF5500] hover:text-[#FF5500]"
@@ -168,7 +169,7 @@ function DailyPickCard({
             aria-label={isSaved ? "Bỏ khỏi tủ nhạc" : "Lưu vào tủ"}
             title={isSaved ? "Đã lưu vào tủ" : "Lưu vào tủ"}
             className={cn(
-              "inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors cursor-pointer",
+              "touch-target inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors cursor-pointer sm:h-9 sm:w-9",
               isSaved
                 ? "border-[#FF5500]/40 bg-[#FF5500]/10 text-[#FF5500]"
                 : "border-[var(--border-subtle)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -184,12 +185,12 @@ function DailyPickCard({
       </div>
 
       {/* Bottom strip: Tracklist toggle for Album or Track info + external link */}
-      <div className="flex items-center justify-between gap-2 border-t border-[var(--border-subtle)] bg-[var(--bg-primary)]/50 px-3.5 py-1.5">
+      <div className="flex items-center justify-between gap-2 border-t border-[var(--border-subtle)] bg-[var(--bg-primary)]/50 px-3 py-2 sm:px-3.5 sm:py-1.5">
         {item.type === "album" && sortedTracks.length > 0 ? (
           <button
             type="button"
             onClick={() => setTracklistOpen((prev) => !prev)}
-            className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-primary)] hover:text-[#FF5500] cursor-pointer"
+            className="inline-flex min-h-8 items-center gap-1.5 text-[11px] font-medium text-[var(--text-primary)] hover:text-[#FF5500] cursor-pointer sm:min-h-0"
           >
             <span>Tracklist ({sortedTracks.length} bài)</span>
             {tracklistOpen ? (
@@ -208,7 +209,7 @@ function DailyPickCard({
           href={item.externalUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex shrink-0 items-center gap-1 font-mono text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+          className="inline-flex min-h-8 shrink-0 items-center gap-1 font-mono text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] sm:min-h-0"
         >
           <span>Mở ngoài</span>
           <ExternalLink className="h-2.5 w-2.5" />
@@ -228,7 +229,7 @@ function DailyPickCard({
                 type="button"
                 onClick={() => onPlaySpecificTrack(track, item)}
                 className={cn(
-                  "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-left text-xs transition-colors cursor-pointer",
+                  "flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-xs transition-colors cursor-pointer sm:py-1",
                   isTrackActive
                     ? "bg-[#FF5500]/12 text-[#FF5500]"
                     : "text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]"

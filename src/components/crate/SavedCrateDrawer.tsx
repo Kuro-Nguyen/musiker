@@ -39,7 +39,7 @@ function getExportDateSlug(): string {
 }
 
 function formatCrateAsText(items: MusicResultItem[], dateSlug: string): string {
-  const header = `MUSIKER — SAVED CRATE (${dateSlug})\nTổng cộng: ${items.length} mục\n${"=".repeat(44)}`;
+  const header = `MUZIKER — SAVED CRATE (${dateSlug})\nTổng cộng: ${items.length} mục\n${"=".repeat(44)}`;
   const lines = items.map((item, idx) => {
     const typeLabel =
       item.type === "album"
@@ -157,7 +157,7 @@ export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
     );
     downloadFileBlob(
       payload,
-      `musiker-crate-${slug}.json`,
+      `muziker-crate-${slug}.json`,
       "application/json;charset=utf-8"
     );
   };
@@ -167,7 +167,7 @@ export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
     const text = formatCrateAsText(savedItems, slug);
     downloadFileBlob(
       text,
-      `musiker-crate-${slug}.txt`,
+      `muziker-crate-${slug}.txt`,
       "text/plain;charset=utf-8"
     );
   };
@@ -214,27 +214,27 @@ export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ duration: 0.24, ease: "easeOut" }}
-            className="flex h-full w-full max-w-md flex-col border-l border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-2xl"
+            className="flex h-dvh w-full max-w-md flex-col border-l border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-2xl"
           >
             {/* Drawer Header */}
-            <div className="border-b border-[var(--border-subtle)] px-5 py-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <Archive className="h-4 w-4 text-[#FF5500]" />
+            <div className="border-b border-[var(--border-subtle)] px-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-3.5 sm:px-5 sm:py-4">
+              <div className="flex items-center justify-between gap-2 sm:gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Archive className="h-4 w-4 shrink-0 text-[#FF5500]" />
                   <h2
                     id="saved-crate-title"
-                    className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-primary)]"
+                    className="truncate font-mono text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-primary)] sm:tracking-[0.14em]"
                   >
-                    SAVED CRATE // {savedItems.length} ITEMS
+                    SAVED CRATE // {savedItems.length}
                   </h2>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                   {filteredItems.length > 0 && (
                     <button
                       type="button"
                       onClick={handlePlayAll}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#FF5500] px-3 text-xs font-semibold text-white hover:bg-[#E64D00] cursor-pointer"
+                      className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-[#FF5500] px-3 text-xs font-semibold text-white hover:bg-[#E64D00] cursor-pointer sm:h-8"
                     >
                       <Play className="h-3 w-3" />
                       <span>Phát tất cả</span>
@@ -244,7 +244,7 @@ export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
                     type="button"
                     onClick={closeCrate}
                     aria-label="Đóng tủ nhạc"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer sm:h-8 sm:w-8"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -261,7 +261,7 @@ export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
                       type="button"
                       onClick={() => setActiveFilter(tab.value)}
                       className={cn(
-                        "rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors cursor-pointer",
+                        "whitespace-nowrap rounded-md px-1 py-2 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2 sm:py-1.5",
                         active
                           ? "bg-[var(--accent-primary)] text-[var(--accent-foreground)]"
                           : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -278,7 +278,7 @@ export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
             </div>
 
             {/* Saved Items List */}
-            <div className="flex-1 overflow-y-auto px-5 py-4">
+            <div className="flex-1 overflow-y-auto px-4 py-3.5 sm:px-5 sm:py-4">
               {filteredItems.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--bg-primary)]/50 p-8 text-center">
                   <Archive className="h-8 w-8 text-[var(--text-secondary)] opacity-60" />
@@ -357,7 +357,7 @@ export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
                               isItemPlaying ? "Tạm dừng" : `Nghe thử ${item.title}`
                             }
                             className={cn(
-                              "inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-colors cursor-pointer",
+                              "inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors cursor-pointer sm:h-8 sm:w-8",
                               isItemActive
                                 ? "border-[#FF5500] bg-[#FF5500] text-white"
                                 : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-primary)] hover:border-[#FF5500] hover:text-[#FF5500]"
@@ -374,8 +374,8 @@ export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
                             href={item.externalUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label={`Mở ${item.title} trên Deezer / Apple Music`}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                            aria-label={`Mở ${item.title} trên nền tảng gốc`}
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] sm:h-8 sm:w-8"
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
                           </a>
@@ -384,7 +384,7 @@ export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
                             type="button"
                             onClick={() => removeSavedItem(item.id)}
                             aria-label={`Xóa ${item.title} khỏi tủ nhạc`}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:border-red-500/50 hover:text-red-500 cursor-pointer"
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:border-red-500/50 hover:text-red-500 cursor-pointer sm:h-8 sm:w-8"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -398,12 +398,12 @@ export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
 
             {/* Footer: 3 Export Modes & Clear All */}
             {savedItems.length > 0 && (
-              <div className="space-y-3 border-t border-[var(--border-subtle)] bg-[var(--bg-primary)]/70 px-5 py-4">
+              <div className="space-y-2.5 border-t border-[var(--border-subtle)] bg-[var(--bg-primary)]/70 px-4 pt-3.5 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:space-y-3 sm:px-5 sm:py-4">
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={handleExportJson}
-                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 text-xs font-medium text-[var(--text-primary)] hover:border-[#FF5500] hover:text-[#FF5500] cursor-pointer"
+                    className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 text-xs font-medium text-[var(--text-primary)] hover:border-[#FF5500] hover:text-[#FF5500] cursor-pointer sm:h-9"
                   >
                     <FileJson className="h-3.5 w-3.5" />
                     <span>JSON</span>
@@ -412,7 +412,7 @@ export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
                   <button
                     type="button"
                     onClick={handleExportText}
-                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 text-xs font-medium text-[var(--text-primary)] hover:border-[#FF5500] hover:text-[#FF5500] cursor-pointer"
+                    className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 text-xs font-medium text-[var(--text-primary)] hover:border-[#FF5500] hover:text-[#FF5500] cursor-pointer sm:h-9"
                   >
                     <Download className="h-3.5 w-3.5" />
                     <span>TXT</span>
@@ -421,7 +421,7 @@ export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
                   <button
                     type="button"
                     onClick={() => void handleCopyText()}
-                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 text-xs font-medium text-[var(--text-primary)] hover:border-[#FF5500] hover:text-[#FF5500] cursor-pointer"
+                    className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 text-xs font-medium text-[var(--text-primary)] hover:border-[#FF5500] hover:text-[#FF5500] cursor-pointer sm:h-9"
                   >
                     {copied ? (
                       <>
@@ -441,7 +441,7 @@ export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
                   type="button"
                   onClick={handleClearAll}
                   className={cn(
-                    "flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border text-xs font-medium transition-colors cursor-pointer",
+                    "flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border text-xs font-medium transition-colors cursor-pointer sm:h-9",
                     confirmClear
                       ? "border-red-500 bg-red-500/15 text-red-500"
                       : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:border-red-500/40 hover:text-red-500"

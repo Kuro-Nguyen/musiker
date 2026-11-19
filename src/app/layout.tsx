@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
@@ -17,8 +17,14 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
-  title: "MUSIKER by Kuro — Minimalist Music Discovery & Randomizer",
+  title: "MUZIKER by Kuro — Minimalist Music Discovery & Randomizer",
   description:
     "Khám phá ngẫu nhiên Album, Bài hát và Nghệ sĩ mỗi ngày theo phong cách tối giản — Zero-Auth, Album-First Experience.",
 };
@@ -34,7 +40,7 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${plusJakartaSans.variable} ${jetbrainsMono.variable}`}
     >
-      <body className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans antialiased selection:bg-[#FF5500]/20 selection:text-[#FF5500]">
+      <body className="min-h-dvh bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans antialiased selection:bg-[#FF5500]/20 selection:text-[#FF5500]">
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

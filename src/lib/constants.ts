@@ -6,7 +6,7 @@ import type {
   TasteProfile,
 } from "@/types/music";
 
-export const APP_NAME = "MUSIKER";
+export const APP_NAME = "MUZIKER";
 export const DEFAULT_DISCOVERY_LEVEL = 80;
 export const DEFAULT_BATCH_COUNT = 1;
 export const BATCH_COUNT_PRESETS = [1, 3, 5, 10] as const;

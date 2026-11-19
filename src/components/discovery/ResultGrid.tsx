@@ -30,13 +30,23 @@ interface ResultGridProps {
 function FeaturedSkeleton() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] md:flex-row">
-      <div className="aspect-square w-full shrink-0 animate-pulse bg-[var(--bg-elevated)] md:w-[260px]" />
-      <div className="flex flex-1 flex-col justify-between space-y-3 p-4 sm:p-5">
-        <div className="space-y-2">
+      {/* Mobile Compact Hero Skeleton */}
+      <div className="flex items-start gap-3 border-b border-[var(--border-subtle)] p-3.5 md:hidden">
+        <div className="h-[104px] w-[104px] shrink-0 animate-pulse rounded-xl bg-[var(--bg-elevated)]" />
+        <div className="flex-1 space-y-2 pt-1">
+          <div className="h-3 w-1/3 animate-pulse rounded bg-[var(--bg-elevated)]" />
+          <div className="h-5 w-4/5 animate-pulse rounded bg-[var(--bg-elevated)]" />
+          <div className="h-3.5 w-1/2 animate-pulse rounded bg-[var(--bg-elevated)]" />
+        </div>
+      </div>
+      {/* Desktop Side Cover Skeleton */}
+      <div className="hidden aspect-square w-[260px] shrink-0 animate-pulse border-r border-[var(--border-subtle)] bg-[var(--bg-elevated)] md:block" />
+      <div className="flex flex-1 flex-col justify-between space-y-3 p-3.5 sm:p-5">
+        <div className="hidden space-y-2 md:block">
           <div className="h-5 w-2/3 animate-pulse rounded bg-[var(--bg-elevated)]" />
           <div className="h-4 w-1/3 animate-pulse rounded bg-[var(--bg-elevated)]" />
-          <div className="h-9 w-full animate-pulse rounded-lg bg-[var(--bg-elevated)]" />
         </div>
+        <div className="h-9 w-full animate-pulse rounded-lg bg-[var(--bg-elevated)]" />
         <div className="space-y-1.5">
           <div className="h-7 w-full animate-pulse rounded bg-[var(--bg-elevated)]" />
           <div className="h-7 w-full animate-pulse rounded bg-[var(--bg-elevated)]" />
