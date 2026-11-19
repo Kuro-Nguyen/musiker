@@ -380,6 +380,23 @@ export async function searchMusicEntities(
   }
 }
 
+export async function getRelatedArtistNames(
+  artistId: string,
+  limit = 8
+): Promise<string[]> {
+  if (!/^\d+$/.test(artistId) || isDeezerCircuitOpen()) {
+    return [];
+  }
+  try {
+    const res = await fetchDeezerJson<DeezerSearchResponse<DeezerArtistRaw>>(
+      `/artist/${artistId}/related?limit=${limit}`
+    );
+    return (res.data ?? []).map((a) => a.name).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 export async function getAlbumDetailsWithTracks(
   albumId: string,
   fallbackQuery?: { title?: string; artist?: string }

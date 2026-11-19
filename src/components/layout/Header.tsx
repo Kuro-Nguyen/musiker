@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { usePreferenceStore } from "@/store/usePreferenceStore";
 
 interface HeaderProps {
   tasteCompleted?: boolean;
@@ -20,17 +21,31 @@ interface HeaderProps {
 }
 
 export function Header({
-  tasteCompleted = false,
-  savedCount = 0,
+  tasteCompleted: tasteCompletedProp,
+  savedCount: savedCountProp,
   onQuizClick,
   onCrateClick,
 }: HeaderProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
+  const {
+    tasteProfile,
+    savedItems,
+    hasHydrated,
+    openQuiz,
+    openCrate,
+  } = usePreferenceStore();
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
+
+  const tasteCompleted =
+    tasteCompletedProp ?? (hasHydrated ? tasteProfile.isCompleted : false);
+  const savedCount =
+    savedCountProp ?? (hasHydrated ? savedItems.length : 0);
+  const handleQuizClick = onQuizClick ?? openQuiz;
+  const handleCrateClick = onCrateClick ?? openCrate;
 
   const isDark = mounted && resolvedTheme === "dark";
 
@@ -62,7 +77,7 @@ export function Header({
           {/* Taste Profile Quiz Trigger */}
           <button
             type="button"
-            onClick={onQuizClick}
+            onClick={handleQuizClick}
             className={cn(
               "inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors cursor-pointer",
               tasteCompleted
@@ -90,7 +105,7 @@ export function Header({
           {/* Saved Crate Trigger */}
           <button
             type="button"
-            onClick={onCrateClick}
+            onClick={handleCrateClick}
             className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 text-xs font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-elevated)] cursor-pointer"
           >
             <Archive className="h-3.5 w-3.5 text-[var(--text-secondary)]" />

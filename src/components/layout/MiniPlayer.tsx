@@ -17,17 +17,29 @@ import {
   X,
 } from "lucide-react";
 import { usePlayerStore } from "@/store/usePlayerStore";
+import { usePreferenceStore } from "@/store/usePreferenceStore";
 import { cn, formatDuration } from "@/lib/utils";
+import type { MusicResultItem, TrackItem } from "@/types/music";
 
-interface MiniPlayerProps {
-  savedIds?: string[];
-  onToggleSave?: (id: string) => void;
+function buildSaveableResultItem(
+  track: TrackItem,
+  contextItem: MusicResultItem | null
+): MusicResultItem {
+  if (contextItem) return contextItem;
+  return {
+    id: track.albumId ?? track.id,
+    type: track.albumId ? "album" : "track",
+    title: track.albumTitle ?? track.title,
+    subtitle: track.artistName,
+    coverUrl: track.coverUrl,
+    popularityScore: 75,
+    discoveryReason: "Lưu từ trình phát nhạc 30s",
+    featuredTrack: track,
+    externalUrl: "https://www.deezer.com",
+  };
 }
 
-export function MiniPlayer({
-  savedIds = [],
-  onToggleSave,
-}: MiniPlayerProps) {
+export function MiniPlayer() {
   const {
     currentTrack,
     contextItem,
@@ -48,6 +60,7 @@ export function MiniPlayer({
     playPrev,
     closePlayer,
   } = usePlayerStore();
+  const { savedItems, hasHydrated, toggleSaveItem } = usePreferenceStore();
 
   const effectiveDuration = duration > 0 ? duration : 30;
   const progressPercent = Math.min(
@@ -58,7 +71,16 @@ export function MiniPlayer({
 
   const saveTargetId =
     contextItem?.id ?? currentTrack?.albumId ?? currentTrack?.id ?? "";
-  const isSaved = Boolean(saveTargetId && savedIds.includes(saveTargetId));
+  const isSaved = Boolean(
+    hasHydrated &&
+      saveTargetId &&
+      savedItems.some((item) => item.id === saveTargetId)
+  );
+
+  const handleSave = () => {
+    if (!currentTrack) return;
+    toggleSaveItem(buildSaveableResultItem(currentTrack, contextItem));
+  };
 
   const hasQueue = queue.length > 1;
   const canPrev = currentTime > 3 || queueIndex > 0;
@@ -145,10 +167,10 @@ export function MiniPlayer({
 
               {/* Mobile quick actions */}
               <div className="flex items-center gap-1 lg:hidden">
-                {onToggleSave && saveTargetId && (
+                {saveTargetId && (
                   <button
                     type="button"
-                    onClick={() => onToggleSave(saveTargetId)}
+                    onClick={handleSave}
                     aria-label={isSaved ? "Bỏ khỏi tủ nhạc" : "Lưu vào tủ"}
                     className={cn(
                       "inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-colors cursor-pointer",
@@ -268,10 +290,10 @@ export function MiniPlayer({
                 />
               </div>
 
-              {onToggleSave && saveTargetId && (
+              {saveTargetId && (
                 <button
                   type="button"
-                  onClick={() => onToggleSave(saveTargetId)}
+                  onClick={handleSave}
                   aria-label={isSaved ? "Bỏ khỏi tủ nhạc" : "Lưu vào tủ"}
                   title={isSaved ? "Đã lưu vào Crate" : "Lưu vào Crate"}
                   className={cn(
