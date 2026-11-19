@@ -18,6 +18,13 @@ import type { MusicResultItem, TrackItem } from "@/types/music";
 
 export type MusicCardVariant = "featured" | "medium" | "compact";
 
+function getExternalSourceLabel(url: string): string {
+  const lower = url.toLowerCase();
+  if (lower.includes("spotify.com")) return "Spotify";
+  if (lower.includes("apple.com")) return "Apple Music";
+  return "Deezer";
+}
+
 export function EqualizerBars({ className }: { className?: string }) {
   return (
     <span
@@ -185,6 +192,7 @@ export function MusicCard({
       : item.type === "track"
         ? "TRACK"
         : "ARTIST";
+  const externalSourceLabel = getExternalSourceLabel(item.externalUrl);
 
   const handleToggleTracklist = () => {
     const nextOpen = !tracklistOpen;
@@ -220,7 +228,7 @@ export function MusicCard({
                 href={item.externalUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                title="Mở trên Deezer / Apple Music"
+                title={`Mở trên ${externalSourceLabel}`}
                 className="absolute bottom-1.5 right-1.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/80 text-[#FF5500] shadow"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
@@ -412,7 +420,7 @@ export function MusicCard({
             href={item.externalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            title="Mở trên Deezer / Apple Music"
+            title={`Mở trên ${externalSourceLabel}`}
             className="absolute bottom-2.5 right-2.5 inline-flex h-9 items-center gap-1.5 rounded-full border border-white/20 bg-black/80 px-3 text-[11px] font-medium text-white shadow-md backdrop-blur-sm transition-transform hover:scale-105"
           >
             <ExternalLink className="h-3.5 w-3.5 text-[#FF5500]" />
@@ -614,7 +622,7 @@ export function MusicCard({
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
           >
-            <span>Mở trên Deezer / Apple</span>
+            <span>Mở trên {externalSourceLabel}</span>
             <ExternalLink className="h-3 w-3" />
           </a>
         </div>

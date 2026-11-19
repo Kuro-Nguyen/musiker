@@ -4,8 +4,17 @@ import {
   searchItunesAlbums,
   searchItunesArtists,
   searchItunesTracks,
+  type ItunesSearchOptions,
   type QuizArtistResult,
 } from "@/lib/itunes";
+import {
+  getSpotifyAlbumDetails,
+  isSpotifyConfigured,
+  isSpotifyEntityId,
+  searchSpotifyAlbums,
+  searchSpotifyArtists,
+  searchSpotifyTracks,
+} from "@/lib/spotify";
 import type { EntityType, MusicResultItem, TrackItem } from "@/types/music";
 
 const DEEZER_BASE_URL = "https://api.deezer.com";
@@ -14,7 +23,7 @@ const CIRCUIT_BREAKER_MS = 10 * 60 * 1000; // 10 minutes
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_CACHE_ENTRIES = 250;
 
-export type MusicProvider = "deezer" | "itunes";
+export type MusicProvider = "spotify" | "deezer" | "itunes" | "hybrid";
 
 let deezerCircuitOpenUntil = 0;
 
@@ -50,12 +59,20 @@ function setCached<T>(key: string, value: T): void {
 
 export function getProviderStatus(): {
   activeProvider: MusicProvider;
+  spotifyEnabled: boolean;
   circuitOpen: boolean;
   circuitReopensAt: number | null;
 } {
   const circuitOpen = Date.now() < deezerCircuitOpenUntil;
+  const spotifyEnabled = isSpotifyConfigured();
+  const activeProvider: MusicProvider = spotifyEnabled
+    ? "hybrid"
+    : circuitOpen
+      ? "itunes"
+      : "deezer";
   return {
-    activeProvider: circuitOpen ? "itunes" : "deezer",
+    activeProvider,
+    spotifyEnabled,
     circuitOpen,
     circuitReopensAt: circuitOpen ? deezerCircuitOpenUntil : null,
   };
@@ -212,23 +229,58 @@ function mapDeezerTrack(raw: DeezerTrackRaw, fallbackCover?: string): TrackItem 
   };
 }
 
-export async function searchArtistsForQuiz(
-  query: string,
-  limit = 8
+function mergeUniqueQuizArtists(
+  primary: QuizArtistResult[],
+  secondary: QuizArtistResult[],
+  limit: number
+): QuizArtistResult[] {
+  const seen = new Set<string>();
+  const merged: QuizArtistResult[] = [];
+  const maxLen = Math.max(primary.length, secondary.length);
+  for (let i = 0; i < maxLen && merged.length < limit; i += 1) {
+    for (const candidate of [primary[i], secondary[i]]) {
+      if (!candidate) continue;
+      const key = candidate.name.trim().toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(candidate);
+      }
+      if (merged.length >= limit) break;
+    }
+  }
+  return merged;
+}
+
+function mergeUniqueMusicItems(
+  primary: MusicResultItem[],
+  secondary: MusicResultItem[],
+  limit?: number
+): MusicResultItem[] {
+  const seen = new Set<string>();
+  const merged: MusicResultItem[] = [];
+  const maxLen = Math.max(primary.length, secondary.length);
+  for (let i = 0; i < maxLen; i += 1) {
+    for (const candidate of [primary[i], secondary[i]]) {
+      if (!candidate) continue;
+      const key = `${candidate.type}:${candidate.title.trim().toLowerCase()}::${candidate.subtitle.trim().toLowerCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(candidate);
+      }
+      if (limit && merged.length >= limit) return merged;
+    }
+  }
+  return merged;
+}
+
+async function searchFallbackArtists(
+  trimmed: string,
+  limit: number
 ): Promise<{
   artists: QuizArtistResult[];
   items: MusicResultItem[];
   provider: MusicProvider;
 }> {
-  const trimmed = query.trim();
-  if (!trimmed) {
-    return {
-      artists: [],
-      items: [],
-      provider: getProviderStatus().activeProvider,
-    };
-  }
-
   try {
     const res = await fetchDeezerJson<DeezerSearchResponse<DeezerArtistRaw>>(
       `/search/artist?q=${encodeURIComponent(trimmed)}&limit=${limit}`
@@ -290,21 +342,51 @@ export async function searchArtistsForQuiz(
   }
 }
 
-export async function searchMusicEntities(
+export async function searchArtistsForQuiz(
   query: string,
-  type: EntityType,
   limit = 8
-): Promise<{ items: MusicResultItem[]; provider: MusicProvider }> {
+): Promise<{
+  artists: QuizArtistResult[];
+  items: MusicResultItem[];
+  provider: MusicProvider;
+}> {
   const trimmed = query.trim();
   if (!trimmed) {
-    return { items: [], provider: getProviderStatus().activeProvider };
+    return {
+      artists: [],
+      items: [],
+      provider: getProviderStatus().activeProvider,
+    };
   }
 
-  if (type === "artist") {
-    const res = await searchArtistsForQuiz(trimmed, limit);
-    return { items: res.items, provider: res.provider };
+  if (isSpotifyConfigured()) {
+    const [spotifyRes, baseRes] = await Promise.all([
+      searchSpotifyArtists(trimmed, limit),
+      searchFallbackArtists(trimmed, limit),
+    ]);
+    if (spotifyRes.artists.length > 0 || spotifyRes.items.length > 0) {
+      return {
+        artists: mergeUniqueQuizArtists(
+          spotifyRes.artists,
+          baseRes.artists,
+          limit
+        ),
+        items: mergeUniqueMusicItems(spotifyRes.items, baseRes.items, limit),
+        provider: baseRes.items.length > 0 ? "hybrid" : "spotify",
+      };
+    }
+    return baseRes;
   }
 
+  return searchFallbackArtists(trimmed, limit);
+}
+
+async function searchFallbackEntities(
+  trimmed: string,
+  type: Exclude<EntityType, "artist">,
+  limit: number,
+  options?: ItunesSearchOptions
+): Promise<{ items: MusicResultItem[]; provider: MusicProvider }> {
   try {
     if (type === "track") {
       const res = await fetchDeezerJson<DeezerSearchResponse<DeezerTrackRaw>>(
@@ -352,43 +434,82 @@ export async function searchMusicEntities(
       })
       .slice(0, limit)
       .map((album) => {
-      const coverUrl =
-        album.cover_xl ?? album.cover_big ?? album.cover_medium ?? album.cover ?? "";
-      const artistName = album.artist?.name ?? "Unknown Artist";
-      return {
-        id: String(album.id),
-        type: "album",
-        title: album.title,
-        subtitle: artistName,
-        coverUrl,
-        releaseYear: album.release_date?.slice(0, 4),
-        genre: album.genres?.data?.[0]?.name,
-        popularityScore: normalizeDeezerScore(album.fans),
-        discoveryReason: "Album từ Deezer Search • Bấm Play để nghe bài nổi bật",
-        featuredTrack: {
-          id: `dz-album-${album.id}`,
+        const coverUrl =
+          album.cover_xl ?? album.cover_big ?? album.cover_medium ?? album.cover ?? "";
+        const artistName = album.artist?.name ?? "Unknown Artist";
+        return {
+          id: String(album.id),
+          type: "album",
           title: album.title,
-          duration: 30,
-          rank: album.fans ?? 750000,
-          previewUrl: null,
-          artistName,
-          artistId: String(album.artist?.id ?? "0"),
-          albumId: String(album.id),
-          albumTitle: album.title,
+          subtitle: artistName,
           coverUrl,
-        },
-        externalUrl: album.link ?? `https://www.deezer.com/album/${album.id}`,
-      };
-    });
+          releaseYear: album.release_date?.slice(0, 4),
+          genre: album.genres?.data?.[0]?.name,
+          popularityScore: normalizeDeezerScore(album.fans),
+          discoveryReason: "Album từ Deezer Search • Bấm Play để nghe bài nổi bật",
+          featuredTrack: {
+            id: `dz-album-${album.id}`,
+            title: album.title,
+            duration: 30,
+            rank: album.fans ?? 750000,
+            previewUrl: null,
+            artistName,
+            artistId: String(album.artist?.id ?? "0"),
+            albumId: String(album.id),
+            albumTitle: album.title,
+            coverUrl,
+          },
+          externalUrl: album.link ?? `https://www.deezer.com/album/${album.id}`,
+        };
+      });
 
     return { items, provider: "deezer" };
   } catch {
     const items =
       type === "track"
-        ? await searchItunesTracks(trimmed, limit)
-        : await searchItunesAlbums(trimmed, limit);
+        ? await searchItunesTracks(trimmed, limit, options)
+        : await searchItunesAlbums(trimmed, limit, options);
     return { items, provider: "itunes" };
   }
+}
+
+export async function searchMusicEntities(
+  query: string,
+  type: EntityType,
+  limit = 8,
+  options?: ItunesSearchOptions
+): Promise<{ items: MusicResultItem[]; provider: MusicProvider }> {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return { items: [], provider: getProviderStatus().activeProvider };
+  }
+
+  if (type === "artist") {
+    const res = await searchArtistsForQuiz(trimmed, limit);
+    return { items: res.items, provider: res.provider };
+  }
+
+  if (isSpotifyConfigured()) {
+    const spotifyPromise =
+      type === "track"
+        ? searchSpotifyTracks(trimmed, limit, options?.offset ?? 0)
+        : searchSpotifyAlbums(trimmed, limit, options?.offset ?? 0);
+
+    const [spotifyItems, baseRes] = await Promise.all([
+      spotifyPromise,
+      searchFallbackEntities(trimmed, type, limit, options),
+    ]);
+
+    if (spotifyItems.length > 0) {
+      return {
+        items: mergeUniqueMusicItems(spotifyItems, baseRes.items, limit * 2),
+        provider: baseRes.items.length > 0 ? "hybrid" : "spotify",
+      };
+    }
+    return baseRes;
+  }
+
+  return searchFallbackEntities(trimmed, type, limit, options);
 }
 
 export async function getRelatedArtistNames(
@@ -412,6 +533,13 @@ export async function getAlbumDetailsWithTracks(
   albumId: string,
   fallbackQuery?: { title?: string; artist?: string }
 ): Promise<{ album: MusicResultItem | null; provider: MusicProvider }> {
+  if (isSpotifyEntityId(albumId) && isSpotifyConfigured()) {
+    const spotifyAlbum = await getSpotifyAlbumDetails(albumId, fallbackQuery);
+    if (spotifyAlbum) {
+      return { album: spotifyAlbum, provider: "spotify" };
+    }
+  }
+
   const isMockOrInvalidNumeric = !/^\d+$/.test(albumId);
 
   if (!isMockOrInvalidNumeric && !isDeezerCircuitOpen()) {

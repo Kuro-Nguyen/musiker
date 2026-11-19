@@ -18,7 +18,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MUSIKER — Minimalist Music Discovery & Randomizer",
+  title: "MUSIKER by Kuro — Minimalist Music Discovery & Randomizer",
   description:
     "Khám phá ngẫu nhiên Album, Bài hát và Nghệ sĩ mỗi ngày theo phong cách tối giản — Zero-Auth, Album-First Experience.",
 };

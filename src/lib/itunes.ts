@@ -275,16 +275,34 @@ export async function searchItunesArtists(
   return { artists, items };
 }
 
+export interface ItunesSearchOptions {
+  country?: string;
+  offset?: number;
+}
+
+export type AppleChartCountry = "us" | "vn" | "jp" | "gb" | "sg";
+
+const CHART_CACHE_TTL_MS = 10 * 60 * 1000;
+
 export async function searchItunesTracks(
   query: string,
-  limit = 8
+  limit = 8,
+  options?: ItunesSearchOptions
 ): Promise<MusicResultItem[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
 
   const safeLimit = Math.max(1, Math.min(20, limit));
+  const countryParam = options?.country
+    ? `&country=${encodeURIComponent(options.country)}`
+    : "";
+  const offsetParam =
+    options?.offset && options.offset > 0
+      ? `&offset=${Math.min(50, Math.round(options.offset))}`
+      : "";
+
   const data = await fetchItunesJson<ItunesSearchResponse<ItunesRawTrack>>(
-    `/search?term=${encodeURIComponent(trimmed)}&entity=song&limit=${safeLimit}`
+    `/search?term=${encodeURIComponent(trimmed)}&entity=song&limit=${safeLimit}${countryParam}${offsetParam}`
   );
 
   return data.results
@@ -301,7 +319,7 @@ export async function searchItunesTracks(
         releaseYear: track.releaseDate ? track.releaseDate.slice(0, 4) : undefined,
         genre: track.primaryGenreName,
         popularityScore: Math.max(48, 94 - index * 4),
-        discoveryReason: "Bài hát từ iTunes Search • Preview 30s",
+        discoveryReason: "Bài hát từ Apple Music / iTunes • Preview 30s",
         featuredTrack: trackItem,
         externalUrl:
           track.trackViewUrl ??
@@ -324,15 +342,24 @@ export function isItunesMultiTrackAlbum(col: ItunesRawCollection): boolean {
 
 export async function searchItunesAlbums(
   query: string,
-  limit = 8
+  limit = 8,
+  options?: ItunesSearchOptions
 ): Promise<MusicResultItem[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
 
   const safeLimit = Math.max(1, Math.min(20, limit));
   const rawLimit = Math.min(40, Math.max(safeLimit * 3, 18));
+  const countryParam = options?.country
+    ? `&country=${encodeURIComponent(options.country)}`
+    : "";
+  const offsetParam =
+    options?.offset && options.offset > 0
+      ? `&offset=${Math.min(50, Math.round(options.offset))}`
+      : "";
+
   const data = await fetchItunesJson<ItunesSearchResponse<ItunesRawCollection>>(
-    `/search?term=${encodeURIComponent(trimmed)}&entity=album&limit=${rawLimit}`
+    `/search?term=${encodeURIComponent(trimmed)}&entity=album&limit=${rawLimit}${countryParam}${offsetParam}`
   );
 
   return data.results
@@ -361,7 +388,7 @@ export async function searchItunesAlbums(
         releaseYear: col.releaseDate ? col.releaseDate.slice(0, 4) : undefined,
         genre: col.primaryGenreName,
         popularityScore: Math.max(50, 93 - index * 4),
-        discoveryReason: "Album từ iTunes Search • Bấm Play hoặc Tracklist để nghe",
+        discoveryReason: "Album từ Apple Music / iTunes • Bấm Play hoặc Tracklist để nghe",
         featuredTrack: {
           id: `album-featured-${albumId}`,
           title: albumTitle,
@@ -378,6 +405,159 @@ export async function searchItunesAlbums(
           col.collectionViewUrl ?? col.artistViewUrl ?? "https://music.apple.com",
       };
     });
+}
+
+interface ItunesRssLink {
+  attributes?: {
+    rel?: string;
+    href?: string;
+    "im:assetType"?: string;
+  };
+  "im:duration"?: { label?: string };
+}
+
+interface ItunesRssEntry {
+  "im:name"?: { label?: string };
+  "im:image"?: Array<{ label?: string }>;
+  "im:itemCount"?: { label?: string };
+  "im:artist"?: {
+    label?: string;
+    attributes?: { href?: string };
+  };
+  "im:releaseDate"?: { label?: string };
+  category?: { attributes?: { label?: string } };
+  id?: {
+    label?: string;
+    attributes?: { "im:id"?: string };
+  };
+  link?: ItunesRssLink | ItunesRssLink[];
+}
+
+interface ItunesRssFeedResponse {
+  feed?: {
+    entry?: ItunesRssEntry[];
+  };
+}
+
+export async function fetchItunesRegionalChart(
+  country: AppleChartCountry,
+  entityType: "album" | "track",
+  limit = 24
+): Promise<MusicResultItem[]> {
+  const feedKind = entityType === "album" ? "topalbums" : "topsongs";
+  const pathWithQuery = `/${country}/rss/${feedKind}/limit=40/json`;
+  const cacheKey = `itunes-rss:${pathWithQuery}`;
+  const cached = getCached<MusicResultItem[]>(cacheKey);
+  if (cached) {
+    return cached.slice(0, limit);
+  }
+
+  try {
+    const response = await fetch(`${ITUNES_BASE_URL}${pathWithQuery}`, {
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) return [];
+    const json = (await response.json()) as ItunesRssFeedResponse;
+    const entries = json.feed?.entry ?? [];
+    const results: MusicResultItem[] = [];
+
+    for (let index = 0; index < entries.length; index += 1) {
+      const entry = entries[index];
+      const title = entry["im:name"]?.label?.trim();
+      const artistName = entry["im:artist"]?.label?.trim() || "Unknown Artist";
+      const rawId = entry.id?.attributes?.["im:id"]?.trim();
+      if (!title || !rawId) continue;
+
+      if (entityType === "album") {
+        const trackCount = Number(entry["im:itemCount"]?.label ?? "0");
+        if (
+          (Number.isFinite(trackCount) && trackCount > 0 && trackCount < 2) ||
+          /\s-\s*single$/i.test(title)
+        ) {
+          continue;
+        }
+      }
+
+      const rawImages = entry["im:image"] ?? [];
+      const rawThumb = rawImages[rawImages.length - 1]?.label;
+      const coverUrl = upgradeItunesArtwork(rawThumb, 600, title);
+      const links = Array.isArray(entry.link)
+        ? entry.link
+        : entry.link
+          ? [entry.link]
+          : [];
+      const altLink = links.find((l) => l.attributes?.rel === "alternate")?.attributes?.href;
+      const previewLink = links.find(
+        (l) =>
+          l.attributes?.rel === "enclosure" ||
+          l.attributes?.["im:assetType"] === "preview"
+      );
+      const previewUrl = previewLink?.attributes?.href ?? null;
+      const durationMs = Number(previewLink?.["im:duration"]?.label ?? "30000");
+      const releaseYear = entry["im:releaseDate"]?.label?.slice(0, 4);
+      const genre = entry.category?.attributes?.label;
+      const countryLabel = country.toUpperCase();
+      const popularityScore = Math.max(55, 96 - Math.round(index * 1.1));
+
+      if (entityType === "album") {
+        results.push({
+          id: rawId,
+          type: "album",
+          title,
+          subtitle: artistName,
+          coverUrl,
+          releaseYear,
+          genre,
+          popularityScore,
+          discoveryReason: `Bảng xếp hạng Apple Music (${countryLabel})`,
+          featuredTrack: {
+            id: `album-featured-${rawId}`,
+            title,
+            duration: 30,
+            rank: 930000 - index * 10000,
+            previewUrl: null,
+            artistName,
+            artistId: "0",
+            albumId: rawId,
+            albumTitle: title,
+            coverUrl,
+          },
+          externalUrl: altLink ?? entry.id?.label ?? "https://music.apple.com",
+        });
+      } else {
+        results.push({
+          id: rawId,
+          type: "track",
+          title,
+          subtitle: artistName,
+          coverUrl,
+          releaseYear,
+          genre,
+          popularityScore,
+          discoveryReason: `Top Chart Apple Music (${countryLabel})`,
+          featuredTrack: {
+            id: rawId,
+            title,
+            duration: Math.max(1, Math.round(durationMs / 1000)),
+            rank: 940000 - index * 10000,
+            previewUrl,
+            artistName,
+            artistId: "0",
+            coverUrl,
+          },
+          externalUrl: altLink ?? entry.id?.label ?? "https://music.apple.com",
+        });
+      }
+    }
+
+    setCached(cacheKey, results, CHART_CACHE_TTL_MS);
+    return results.slice(0, limit);
+  } catch {
+    return [];
+  }
 }
 
 function normalizeMatchText(value: string): string {

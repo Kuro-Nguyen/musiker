@@ -57,18 +57,54 @@ export function Header({
     <header className="sticky top-0 z-40 h-16 w-full border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/90 backdrop-blur-md">
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Identity */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-2.5">
+            <svg
               aria-hidden="true"
-              className="inline-block h-2.5 w-2.5 rounded-full bg-[#FF5500]"
-            />
+              viewBox="0 0 32 32"
+              className="h-7 w-7 shrink-0 rounded-lg shadow-xs"
+              fill="none"
+            >
+              <rect
+                x="1"
+                y="1"
+                width="30"
+                height="30"
+                rx="7"
+                fill="#111111"
+                stroke="#27272A"
+                strokeWidth="1"
+              />
+              <circle
+                cx="16"
+                cy="16"
+                r="10.5"
+                stroke="#F4F4F6"
+                strokeOpacity="0.24"
+                strokeWidth="1.25"
+              />
+              <circle
+                cx="16"
+                cy="16"
+                r="7.5"
+                stroke="#F4F4F6"
+                strokeOpacity="0.14"
+                strokeWidth="1"
+                strokeDasharray="10 4"
+              />
+              <circle cx="16" cy="16" r="4.2" fill="#FF5500" />
+              <circle cx="16" cy="16" r="1.4" fill="#111111" />
+              <circle cx="25" cy="7" r="1.75" fill="#FF5500" />
+            </svg>
             <span className="text-base font-bold tracking-[0.16em] text-[var(--text-primary)]">
               {APP_NAME}
             </span>
           </div>
-          <span className="hidden border-l border-[var(--border-subtle)] pl-3 font-mono text-[11px] uppercase tracking-widest text-[var(--text-secondary)] sm:inline-block">
-            SYS.01 // DISCOVERY
+          <span className="inline-flex items-center border-l border-[var(--border-subtle)] pl-2.5 font-mono text-xs font-medium tracking-wider text-[var(--text-secondary)]">
+            by&nbsp;
+            <span className="font-semibold text-[var(--text-primary)]">
+              Kuro
+            </span>
           </span>
         </div>
 
