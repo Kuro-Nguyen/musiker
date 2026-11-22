@@ -6,10 +6,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Archive,
   Check,
+  Cloud,
   Copy,
   Download,
   ExternalLink,
   FileJson,
+  Loader2,
   Pause,
   Play,
   Trash2,
@@ -17,8 +19,10 @@ import {
 } from "lucide-react";
 import { EqualizerBars } from "@/components/discovery/MusicCard";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/useAuthStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
 import { usePreferenceStore } from "@/store/usePreferenceStore";
+import { useSavedCrateStore } from "@/store/useSavedCrateStore";
 import type { EntityType, MusicResultItem } from "@/types/music";
 
 type CrateFilter = "all" | EntityType;
@@ -78,13 +82,15 @@ interface SavedCrateDrawerProps {
 }
 
 export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
+  const { isCrateOpen, closeCrate } = usePreferenceStore();
+  const { user } = useAuthStore();
   const {
     savedItems,
-    isCrateOpen,
-    closeCrate,
+    isSyncing,
+    syncError,
     removeSavedItem,
     clearSavedItems,
-  } = usePreferenceStore();
+  } = useSavedCrateStore();
   const { currentTrack, isPlaying, playTrack } = usePlayerStore();
 
   const [activeFilter, setActiveFilter] = React.useState<CrateFilter>("all");
@@ -221,12 +227,32 @@ export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
               <div className="flex items-center justify-between gap-2 sm:gap-3">
                 <div className="flex min-w-0 items-center gap-2">
                   <Archive className="h-4 w-4 shrink-0 text-[#FF5500]" />
-                  <h2
-                    id="saved-crate-title"
-                    className="truncate font-mono text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-primary)] sm:tracking-[0.14em]"
-                  >
-                    SAVED CRATE // {savedItems.length}
-                  </h2>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <h2
+                        id="saved-crate-title"
+                        className="truncate font-mono text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-primary)] sm:tracking-[0.14em]"
+                      >
+                        SAVED CRATE // {savedItems.length}
+                      </h2>
+                      {isSyncing ? (
+                        <Loader2 className="h-3 w-3 shrink-0 animate-spin text-[#FF5500]" />
+                      ) : (
+                        <span
+                          title="Đồng bộ Cloud Firestore"
+                          className="inline-flex items-center gap-0.5 rounded bg-emerald-500/12 px-1 py-0.5 font-mono text-[9px] font-semibold text-emerald-600 dark:text-emerald-400"
+                        >
+                          <Cloud className="h-2.5 w-2.5" />
+                          <span>SYNC</span>
+                        </span>
+                      )}
+                    </div>
+                    {user?.email && (
+                      <p className="truncate font-mono text-[10px] text-[var(--text-secondary)]">
+                        {user.email}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
@@ -279,6 +305,11 @@ export function SavedCrateDrawer({ onPlayItem }: SavedCrateDrawerProps) {
 
             {/* Saved Items List */}
             <div className="flex-1 overflow-y-auto px-4 py-3.5 sm:px-5 sm:py-4">
+              {syncError && (
+                <div className="mb-3 rounded-lg border border-red-500/35 bg-red-500/10 px-3 py-2 text-xs text-red-500">
+                  {syncError}
+                </div>
+              )}
               {filteredItems.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--bg-primary)]/50 p-8 text-center">
                   <Archive className="h-8 w-8 text-[var(--text-secondary)] opacity-60" />

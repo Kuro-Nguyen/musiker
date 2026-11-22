@@ -1,6 +1,9 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# =============================================================================
+# MUZIKER — Enterprise Production .gitignore
+# Protects secrets, credentials, cloud keys, build artifacts, and local state.
+# =============================================================================
 
-# dependencies
+# --- Dependencies & Package Managers ---
 /node_modules
 /.pnp
 .pnp.*
@@ -9,34 +12,90 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+.npm
+.pnpm-store/
 
-# testing
-/coverage
-
-# next.js
+# --- Build Outputs & Generated Types ---
 /.next/
 /out/
+/build/
+/dist/
+*.tsbuildinfo
+next-env.d.ts
 
-# production
-/build
+# --- Environment Variables & Secrets (NEVER COMMIT) ---
+.env
+.env.*
+*.env
+!.env.example
 
-# misc
-.DS_Store
+# --- Certificates, Private Keys & API Credentials ---
 *.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.jks
+*credentials*.json
+*secrets*.json
+*.secret
 
-# debug
+# --- Firebase Secrets, Emulators & CLI State ---
+*firebase-adminsdk*.json
+*serviceAccount*.json
+*service-account*.json
+google-services.json
+GoogleService-Info.plist
+.firebase/
+.firebaserc.local
+emulator-data/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+pubsub-debug.log*
+auth-debug.log*
+database-debug.log*
+
+# --- Deployment & Cloud Tooling ---
+.vercel
+.netlify
+.serverless/
+
+# --- Testing & Coverage ---
+/coverage
+/.nyc_output
+
+# --- Logs & Runtime State ---
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+pids/
+*.pid
+*.seed
+*.pid.lock
 
-# env files
-.env*
+# --- Internal Docs / Unreleased Assets ---
+musiker-prd.pdf
 
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
+# --- OS & IDE Metadata ---
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+*~

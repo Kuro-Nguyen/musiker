@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { SavedCrateDrawer } from "@/components/crate/SavedCrateDrawer";
+import { AuthModal } from "@/components/auth/AuthModal";
 import { ControlPanel } from "@/components/discovery/ControlPanel";
 import { DailyPickBanner } from "@/components/discovery/DailyPickBanner";
 import { ResultGrid } from "@/components/discovery/ResultGrid";
@@ -28,8 +29,10 @@ import {
   ENTITY_OPTIONS,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/useAuthStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
 import { usePreferenceStore } from "@/store/usePreferenceStore";
+import { useSavedCrateStore } from "@/store/useSavedCrateStore";
 import type {
   EntityType,
   MusicResultItem,
@@ -106,15 +109,20 @@ export default function HomePage() {
 
   const {
     tasteProfile,
-    savedItems,
     seenIds,
     hasHydrated,
     isQuizOpen,
     isCrateOpen,
     openQuiz,
-    toggleSaveItem,
     addSeenIds,
   } = usePreferenceStore();
+  const { user, isAuthModalOpen } = useAuthStore();
+  const {
+    savedItems,
+    toastMessage: crateToastMessage,
+    clearToast: clearCrateToast,
+    requestToggleSaveItem,
+  } = useSavedCrateStore();
 
   const {
     currentTrack,
@@ -124,14 +132,20 @@ export default function HomePage() {
     playTrack,
   } = usePlayerStore();
 
+  React.useEffect(() => {
+    if (!crateToastMessage) return;
+    setStatusNotice(crateToastMessage);
+    clearCrateToast();
+  }, [crateToastMessage, clearCrateToast]);
+
   const effectiveTaste = hasHydrated ? tasteProfile : DEFAULT_TASTE_PROFILE;
   const effectiveSeenIds = React.useMemo(
     () => (hasHydrated ? seenIds : []),
     [hasHydrated, seenIds]
   );
   const savedIdSet = React.useMemo(
-    () => new Set(hasHydrated ? savedItems.map((item) => item.id) : []),
-    [hasHydrated, savedItems]
+    () => new Set(user ? savedItems.map((item) => item.id) : []),
+    [user, savedItems]
   );
 
   const hydrateAlbum = React.useCallback(
@@ -357,7 +371,7 @@ export default function HomePage() {
   // Keyboard shortcut: Space or R triggers Randomize when modals/drawers & inputs are inactive
   React.useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (isQuizOpen || isCrateOpen) return;
+      if (isQuizOpen || isCrateOpen || isAuthModalOpen) return;
 
       const target = event.target as HTMLElement | null;
       const tag = target?.tagName?.toLowerCase();
@@ -379,7 +393,7 @@ export default function HomePage() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleRandomize, isQuizOpen, isCrateOpen]);
+  }, [handleRandomize, isQuizOpen, isCrateOpen, isAuthModalOpen]);
 
   const runLiveSearch = React.useCallback(
     async (queryToRun: string, typeToRun: EntityType) => {
@@ -676,7 +690,7 @@ export default function HomePage() {
               void handlePlaySpecificTrack(track, item)
             }
             onExpandAlbumTracklist={handleExpandAlbumTracklist}
-            onToggleSave={toggleSaveItem}
+            onToggleSave={(item) => void requestToggleSaveItem(item)}
             onResetEmpty={
               liveResults !== null
                 ? handleClearLiveSearch
@@ -851,12 +865,15 @@ export default function HomePage() {
           onPlaySpecificTrack={(track, item) =>
             void handlePlaySpecificTrack(track, item)
           }
-          onToggleSave={toggleSaveItem}
+          onToggleSave={(item) => void requestToggleSaveItem(item)}
         />
       </main>
 
       {/* Taste Quiz Modal (5 Steps -> localStorage) */}
       <TasteQuizModal onComplete={handleQuizComplete} />
+
+      {/* Auth Modal (Firebase Google Sign-In & Email/Password) */}
+      <AuthModal />
 
       {/* Saved Crate Drawer (Play All + JSON/TXT/Copy Export) */}
       <SavedCrateDrawer onPlayItem={(item) => void handlePlayItem(item)} />

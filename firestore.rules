@@ -1,0 +1,251 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // This security rules file assumes the following data structures
+    // for the MUZIKER web app (Cloud Firestore Standard Edition):
+    //
+    // Collection: users/{userId}/savedItems/{docId}
+    // Document ID: {docId} (music entity identifier; scoped under owner {userId})
+    // Access: Authenticated owner only (request.auth.uid == userId).
+    //         Guests (unauthenticated) have zero read or write access.
+    //         Parent users/{userId} document is not required to exist.
+    //
+    // Fields:
+    //   - ownerUid: string (required, immutable, must equal request.auth.uid)
+    //   - id: string (required, immutable, 1..128 chars)
+    //   - type: string (required, enum: 'album' | 'track' | 'artist')
+    //   - title: string (required, 1..300 chars)
+    //   - subtitle: string (required, 1..300 chars)
+    //   - coverUrl: string (required, 0..4096 chars; https/http URL, data:image/svg+xml fallback SVG, or empty string)
+    //   - popularityScore: number (required, 0..100)
+    //   - discoveryReason: string (required, 0..300 chars)
+    //   - featuredTrack: map (required, TrackItem schema below)
+    //   - externalUrl: string (required, 1..2048 chars; https/http URL)
+    //   - savedAt: timestamp (required; must equal request.time on create via serverTimestamp(), timestamp on update)
+    //   - releaseYear: string (optional, 0..20 chars)
+    //   - genre: string (optional, 0..100 chars)
+    //   - tracklist: list (optional, max 25 TrackItem maps)
+    //
+    // Nested Map Schema (featuredTrack / TrackItem):
+    //   Required keys: 'id', 'title', 'duration', 'rank', 'artistName', 'artistId', 'coverUrl'
+    //   Optional keys: 'previewUrl', 'albumId', 'albumTitle'
+    //   - id: string (1..128 chars)
+    //   - title: string (1..300 chars)
+    //   - duration: number (0..86400 seconds)
+    //   - rank: number (0..1000000000000)
+    //   - previewUrl: null | string (0..2048 chars; https/http URL, empty string, or null)
+    //   - artistName: string (1..300 chars)
+    //   - artistId: string (1..128 chars)
+    //   - albumId: null | string (0..128 chars)
+    //   - albumTitle: null | string (0..300 chars)
+    //   - coverUrl: string (0..4096 chars; https/http URL, data:image/svg+xml fallback SVG, or empty string)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the request is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if the authenticated user owns the path scoped by userId
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Verify ownerUid matches the authenticated user
+    function ownerUidUnchanged(data) {
+      return data.ownerUid is string && data.ownerUid == request.auth.uid;
+    }
+
+    // Ensure ownerUid field is not modified on update
+    function ownerUidNotModified() {
+      return request.resource.data.ownerUid == resource.data.ownerUid;
+    }
+
+    // Validate required fields exist in a map/document
+    function hasRequiredFields(data, fields) {
+      return data.keys().hasAll(fields);
+    }
+
+    // Validate that a map/document contains only allowed fields
+    function hasOnlyAllowedFields(data, fields) {
+      return data.keys().hasOnly(fields);
+    }
+
+    // Validate that immutable fields have not changed on update
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // Validate HTTP/HTTPS URL format
+    function isValidUrl(url) {
+      return url is string &&
+        (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    // Validate cover artwork URL (HTTP/HTTPS URL, data:image/svg+xml fallback SVG, or empty string)
+    function isValidCoverUrl(url) {
+      return url is string &&
+        url.size() <= 4096 &&
+        (url == "" || isValidUrl(url) || url.matches("^data:image/svg\\+xml.*"));
+    }
+
+    // ===============================================================
+    // Domain Validators (Used in BOTH create and update)
+    // ===============================================================
+
+    // Validate nested TrackItem map (featuredTrack)
+    function isValidTrackItem(track) {
+      return track is map &&
+        hasOnlyAllowedFields(track, [
+          'id',
+          'title',
+          'duration',
+          'rank',
+          'previewUrl',
+          'artistName',
+          'artistId',
+          'albumId',
+          'albumTitle',
+          'coverUrl'
+        ]) &&
+        hasRequiredFields(track, [
+          'id',
+          'title',
+          'duration',
+          'rank',
+          'artistName',
+          'artistId',
+          'coverUrl'
+        ]) &&
+        track.id is string && track.id.size() >= 1 && track.id.size() <= 128 &&
+        track.title is string && track.title.size() >= 1 && track.title.size() <= 300 &&
+        track.duration is number && track.duration >= 0 && track.duration <= 86400 &&
+        track.rank is number && track.rank >= 0 && track.rank <= 1000000000000 &&
+        track.artistName is string && track.artistName.size() >= 1 && track.artistName.size() <= 300 &&
+        track.artistId is string && track.artistId.size() >= 1 && track.artistId.size() <= 128 &&
+        isValidCoverUrl(track.coverUrl) &&
+        (!('previewUrl' in track) || track.previewUrl == null ||
+          (track.previewUrl is string &&
+           track.previewUrl.size() <= 2048 &&
+           (track.previewUrl == "" || isValidUrl(track.previewUrl)))) &&
+        (!('albumId' in track) || track.albumId == null ||
+          (track.albumId is string && track.albumId.size() <= 128)) &&
+        (!('albumTitle' in track) || track.albumTitle == null ||
+          (track.albumTitle is string && track.albumTitle.size() <= 300));
+    }
+
+    // Bounded type check for tracklist elements (up to max 25 items) without exceeding CEL expression limits
+    function areAllTracklistEntriesMaps(items) {
+      return (items.size() <= 0 || items[0] is map) &&
+        (items.size() <= 1 || items[1] is map) &&
+        (items.size() <= 2 || items[2] is map) &&
+        (items.size() <= 3 || items[3] is map) &&
+        (items.size() <= 4 || items[4] is map) &&
+        (items.size() <= 5 || items[5] is map) &&
+        (items.size() <= 6 || items[6] is map) &&
+        (items.size() <= 7 || items[7] is map) &&
+        (items.size() <= 8 || items[8] is map) &&
+        (items.size() <= 9 || items[9] is map) &&
+        (items.size() <= 10 || items[10] is map) &&
+        (items.size() <= 11 || items[11] is map) &&
+        (items.size() <= 12 || items[12] is map) &&
+        (items.size() <= 13 || items[13] is map) &&
+        (items.size() <= 14 || items[14] is map) &&
+        (items.size() <= 15 || items[15] is map) &&
+        (items.size() <= 16 || items[16] is map) &&
+        (items.size() <= 17 || items[17] is map) &&
+        (items.size() <= 18 || items[18] is map) &&
+        (items.size() <= 19 || items[19] is map) &&
+        (items.size() <= 20 || items[20] is map) &&
+        (items.size() <= 21 || items[21] is map) &&
+        (items.size() <= 22 || items[22] is map) &&
+        (items.size() <= 23 || items[23] is map) &&
+        (items.size() <= 24 || items[24] is map);
+    }
+
+    // Validate SavedItem document schema
+    function isValidSavedItem(data) {
+      return hasOnlyAllowedFields(data, [
+          'ownerUid',
+          'id',
+          'type',
+          'title',
+          'subtitle',
+          'coverUrl',
+          'popularityScore',
+          'discoveryReason',
+          'featuredTrack',
+          'externalUrl',
+          'savedAt',
+          'releaseYear',
+          'genre',
+          'tracklist'
+        ]) &&
+        hasRequiredFields(data, [
+          'ownerUid',
+          'id',
+          'type',
+          'title',
+          'subtitle',
+          'coverUrl',
+          'popularityScore',
+          'discoveryReason',
+          'featuredTrack',
+          'externalUrl',
+          'savedAt'
+        ]) &&
+        ownerUidUnchanged(data) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+        data.type is string && data.type in ['album', 'track', 'artist'] &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
+        data.subtitle is string && data.subtitle.size() >= 1 && data.subtitle.size() <= 300 &&
+        isValidCoverUrl(data.coverUrl) &&
+        data.popularityScore is number && data.popularityScore >= 0 && data.popularityScore <= 100 &&
+        data.discoveryReason is string && data.discoveryReason.size() <= 300 &&
+        isValidUrl(data.externalUrl) && data.externalUrl.size() >= 1 && data.externalUrl.size() <= 2048 &&
+        isValidTrackItem(data.featuredTrack) &&
+        data.savedAt is timestamp &&
+        (!('releaseYear' in data) || (data.releaseYear is string && data.releaseYear.size() <= 20)) &&
+        (!('genre' in data) || (data.genre is string && data.genre.size() <= 100)) &&
+        (!('tracklist' in data) ||
+          (data.tracklist is list &&
+           data.tracklist.size() <= 25 &&
+           areAllTracklistEntriesMaps(data.tracklist)));
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // Default deny all reads and writes at root
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Protected per-user Saved Crate items
+    match /users/{userId}/savedItems/{docId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId) &&
+        (request.query.limit == null || request.query.limit <= 200);
+      allow create: if isOwner(userId) &&
+        isValidSavedItem(request.resource.data) &&
+        request.resource.data.savedAt == request.time;
+      allow update: if isOwner(userId) &&
+        isValidSavedItem(request.resource.data) &&
+        ownerUidNotModified() &&
+        areImmutableFieldsUnchanged(['ownerUid', 'id']);
+      allow delete: if isOwner(userId);
+    }
+  }
+}

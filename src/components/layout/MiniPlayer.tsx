@@ -16,8 +16,9 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
+import { useAuthStore } from "@/store/useAuthStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
-import { usePreferenceStore } from "@/store/usePreferenceStore";
+import { useSavedCrateStore } from "@/store/useSavedCrateStore";
 import { cn, formatDuration } from "@/lib/utils";
 import type { MusicResultItem, TrackItem } from "@/types/music";
 
@@ -60,7 +61,8 @@ export function MiniPlayer() {
     playPrev,
     closePlayer,
   } = usePlayerStore();
-  const { savedItems, hasHydrated, toggleSaveItem } = usePreferenceStore();
+  const { user } = useAuthStore();
+  const { savedItems, requestToggleSaveItem } = useSavedCrateStore();
 
   const effectiveDuration = duration > 0 ? duration : 30;
   const progressPercent = Math.min(
@@ -72,14 +74,14 @@ export function MiniPlayer() {
   const saveTargetId =
     contextItem?.id ?? currentTrack?.albumId ?? currentTrack?.id ?? "";
   const isSaved = Boolean(
-    hasHydrated &&
+    user &&
       saveTargetId &&
       savedItems.some((item) => item.id === saveTargetId)
   );
 
   const handleSave = () => {
     if (!currentTrack) return;
-    toggleSaveItem(buildSaveableResultItem(currentTrack, contextItem));
+    void requestToggleSaveItem(buildSaveableResultItem(currentTrack, contextItem));
   };
 
   const hasQueue = queue.length > 1;

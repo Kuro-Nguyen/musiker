@@ -9,7 +9,6 @@ import {
 import { DEFAULT_TASTE_PROFILE, MAX_SEEN_IDS } from "@/lib/constants";
 import type {
   DailyPickData,
-  MusicResultItem,
   TasteProfile,
 } from "@/types/music";
 
@@ -40,11 +39,10 @@ function createMigratingStorage(): StateStorage {
 }
 
 interface PreferenceState {
-  // Persisted to localStorage
+  // Persisted to localStorage (guest-safe preferences only)
   tasteProfile: TasteProfile;
   dailyPick: DailyPickData | null;
   seenIds: string[];
-  savedItems: MusicResultItem[];
 
   // Transient UI / hydration state
   hasHydrated: boolean;
@@ -61,10 +59,6 @@ interface PreferenceState {
   saveTasteProfile: (profile: TasteProfile) => void;
   resetTasteProfile: () => void;
 
-  toggleSaveItem: (item: MusicResultItem) => void;
-  removeSavedItem: (id: string) => void;
-  clearSavedItems: () => void;
-
   addSeenIds: (ids: string[]) => void;
   clearSeenIds: () => void;
 
@@ -77,7 +71,6 @@ export const usePreferenceStore = create<PreferenceState>()(
       tasteProfile: DEFAULT_TASTE_PROFILE,
       dailyPick: null,
       seenIds: [],
-      savedItems: [],
 
       hasHydrated: false,
       isQuizOpen: false,
@@ -106,23 +99,6 @@ export const usePreferenceStore = create<PreferenceState>()(
           },
         }),
 
-      toggleSaveItem: (item) =>
-        set((state) => {
-          const exists = state.savedItems.some((entry) => entry.id === item.id);
-          return {
-            savedItems: exists
-              ? state.savedItems.filter((entry) => entry.id !== item.id)
-              : [item, ...state.savedItems],
-          };
-        }),
-
-      removeSavedItem: (id) =>
-        set((state) => ({
-          savedItems: state.savedItems.filter((entry) => entry.id !== id),
-        })),
-
-      clearSavedItems: () => set({ savedItems: [] }),
-
       addSeenIds: (ids) => {
         if (ids.length === 0) return;
         set((state) => {
@@ -147,7 +123,6 @@ export const usePreferenceStore = create<PreferenceState>()(
         tasteProfile: state.tasteProfile,
         dailyPick: state.dailyPick,
         seenIds: state.seenIds,
-        savedItems: state.savedItems,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
