@@ -49,9 +49,13 @@ function setCached<T>(key: string, value: T): void {
   });
 }
 
+function cleanEnv(value?: string): string {
+  return value?.trim().replace(/^["']|["']$/g, "") ?? "";
+}
+
 function getCredentials(): { clientId: string; clientSecret: string } | null {
-  const clientId = process.env.SPOTIFY_CLIENT_ID?.trim() ?? "";
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET?.trim() ?? "";
+  const clientId = cleanEnv(process.env.SPOTIFY_CLIENT_ID);
+  const clientSecret = cleanEnv(process.env.SPOTIFY_CLIENT_SECRET);
   if (!clientId || !clientSecret) return null;
   return { clientId, clientSecret };
 }
@@ -467,6 +471,39 @@ export async function getSpotifyAlbumDetails(
     )
   );
 
+  // Hydrate top 3 tracks missing Spotify preview_url in parallel within 2s via iTunes
+  const previewTargets = tracklist
+    .map((track, idx) => ({ track, idx }))
+    .filter(({ track }) => !track.previewUrl)
+    .slice(0, 3);
+
+  if (previewTargets.length > 0) {
+    await Promise.race([
+      Promise.all(
+        previewTargets.map(async ({ track, idx }) => {
+          try {
+            const fallback = await findItunesPreview(
+              track.artistName || artistName,
+              track.title
+            );
+            if (fallback.previewUrl) {
+              tracklist[idx] = {
+                ...tracklist[idx],
+                previewUrl: fallback.previewUrl,
+                duration: fallback.duration || tracklist[idx].duration,
+              };
+            }
+          } catch {
+            // Keep track playable on Spotify external link if iTunes preview misses
+          }
+        })
+      ),
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, 2000);
+      }),
+    ]);
+  }
+
   let featuredTrack: TrackItem =
     tracklist.find((t) => Boolean(t.previewUrl)) ??
     tracklist[0] ?? {
@@ -486,20 +523,21 @@ export async function getSpotifyAlbumDetails(
 
   if (!featuredTrack.previewUrl) {
     try {
-      const fallback = await findItunesPreview(
-        featuredTrack.artistName || artistName,
-        featuredTrack.title
-      );
-      if (fallback.previewUrl) {
+      const fallback = await Promise.race([
+        findItunesPreview(
+          featuredTrack.artistName || artistName,
+          featuredTrack.title
+        ),
+        new Promise<null>((resolve) => {
+          setTimeout(() => resolve(null), 1500);
+        }),
+      ]);
+      if (fallback?.previewUrl) {
         featuredTrack = {
           ...featuredTrack,
           previewUrl: fallback.previewUrl,
           duration: fallback.duration || featuredTrack.duration,
         };
-        const idx = tracklist.findIndex((t) => t.id === featuredTrack.id);
-        if (idx >= 0) {
-          tracklist[idx] = { ...tracklist[idx], previewUrl: fallback.previewUrl };
-        }
       }
     } catch {
       // Keep playable external link even if preview lookup fails

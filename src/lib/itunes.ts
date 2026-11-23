@@ -750,25 +750,35 @@ export async function findItunesPreview(
   artistName: string,
   trackTitle: string
 ): Promise<PreviewFallbackResult> {
-  const query = `${artistName} ${trackTitle}`.trim();
-  if (!query) {
-    return {
-      previewUrl: null,
-      duration: 30,
-      coverUrl: createFallbackCoverSvg("NO PREVIEW"),
-      trackId: "",
-      externalUrl: "https://music.apple.com",
-      artistName,
-      title: trackTitle,
-    };
-  }
-
-  const data = await fetchItunesJson<ItunesSearchResponse<ItunesRawTrack>>(
-    `/search?term=${encodeURIComponent(query)}&entity=song&limit=6`
-  );
-
   const normArtist = normalizeMatchText(artistName);
   const normTitle = normalizeMatchText(trackTitle);
+  const isArtistOnlyLookup = !normTitle || normArtist === normTitle;
+  const query = isArtistOnlyLookup
+    ? artistName.trim()
+    : `${artistName} ${trackTitle}`.trim();
+
+  const emptyResult: PreviewFallbackResult = {
+    previewUrl: null,
+    duration: 30,
+    coverUrl: createFallbackCoverSvg(trackTitle || artistName || "NO PREVIEW"),
+    trackId: "",
+    externalUrl: "https://music.apple.com",
+    artistName,
+    title: trackTitle,
+  };
+
+  if (!query) {
+    return emptyResult;
+  }
+
+  let data: ItunesSearchResponse<ItunesRawTrack>;
+  try {
+    data = await fetchItunesJson<ItunesSearchResponse<ItunesRawTrack>>(
+      `/search?term=${encodeURIComponent(query)}&entity=song&limit=6`
+    );
+  } catch {
+    return emptyResult;
+  }
 
   const scored = data.results
     .filter((r) => Boolean(r.trackName))
@@ -776,10 +786,12 @@ export async function findItunesPreview(
       let score = r.previewUrl ? 10 : 0;
       const rTitle = normalizeMatchText(r.trackName ?? "");
       const rArtist = normalizeMatchText(r.artistName ?? "");
-      if (normTitle && rTitle === normTitle) score += 8;
-      else if (normTitle && rTitle.includes(normTitle)) score += 4;
-      if (normArtist && rArtist === normArtist) score += 8;
-      else if (normArtist && rArtist.includes(normArtist)) score += 4;
+      if (!isArtistOnlyLookup) {
+        if (normTitle && rTitle === normTitle) score += 8;
+        else if (normTitle && rTitle.includes(normTitle)) score += 4;
+      }
+      if (normArtist && rArtist === normArtist) score += 10;
+      else if (normArtist && rArtist.includes(normArtist)) score += 5;
       return { r, score };
     })
     .sort((a, b) => b.score - a.score);
@@ -787,15 +799,7 @@ export async function findItunesPreview(
   const best = scored[0]?.r;
 
   if (!best) {
-    return {
-      previewUrl: null,
-      duration: 30,
-      coverUrl: createFallbackCoverSvg(trackTitle || artistName),
-      trackId: "",
-      externalUrl: "https://music.apple.com",
-      artistName,
-      title: trackTitle,
-    };
+    return emptyResult;
   }
 
   return {

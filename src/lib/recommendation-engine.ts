@@ -979,6 +979,10 @@ async function hydrateSingleResult(
           ...item.featuredTrack,
           previewUrl: fallback.previewUrl,
           duration: fallback.duration || item.featuredTrack.duration,
+          title:
+            item.type === "artist" && fallback.title
+              ? fallback.title
+              : item.featuredTrack.title,
         },
       };
     }

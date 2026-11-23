@@ -234,21 +234,56 @@ function mergeUniqueQuizArtists(
   secondary: QuizArtistResult[],
   limit: number
 ): QuizArtistResult[] {
-  const seen = new Set<string>();
+  const indexByKey = new Map<string, number>();
   const merged: QuizArtistResult[] = [];
   const maxLen = Math.max(primary.length, secondary.length);
-  for (let i = 0; i < maxLen && merged.length < limit; i += 1) {
+  for (let i = 0; i < maxLen; i += 1) {
     for (const candidate of [primary[i], secondary[i]]) {
       if (!candidate) continue;
       const key = candidate.name.trim().toLowerCase();
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push(candidate);
+      const existingIdx = indexByKey.get(key);
+      if (existingIdx !== undefined) {
+        const existing = merged[existingIdx];
+        if (!existing.genre && candidate.genre) {
+          merged[existingIdx] = { ...existing, genre: candidate.genre };
+        }
+        continue;
       }
-      if (merged.length >= limit) break;
+      if (merged.length >= limit) continue;
+      indexByKey.set(key, merged.length);
+      merged.push(candidate);
     }
   }
   return merged;
+}
+
+function enrichMergedMusicItem(
+  base: MusicResultItem,
+  supplement: MusicResultItem
+): MusicResultItem {
+  const shouldAdoptFeaturedTitle =
+    base.type === "artist" &&
+    base.featuredTrack.title.trim().toLowerCase() ===
+      base.title.trim().toLowerCase() &&
+    Boolean(supplement.featuredTrack.title);
+
+  return {
+    ...base,
+    genre: base.genre ?? supplement.genre,
+    releaseYear: base.releaseYear ?? supplement.releaseYear,
+    featuredTrack: {
+      ...base.featuredTrack,
+      previewUrl:
+        base.featuredTrack.previewUrl ?? supplement.featuredTrack.previewUrl,
+      duration:
+        base.featuredTrack.previewUrl || !supplement.featuredTrack.previewUrl
+          ? base.featuredTrack.duration
+          : supplement.featuredTrack.duration,
+      title: shouldAdoptFeaturedTitle
+        ? supplement.featuredTrack.title
+        : base.featuredTrack.title,
+    },
+  };
 }
 
 function mergeUniqueMusicItems(
@@ -256,21 +291,76 @@ function mergeUniqueMusicItems(
   secondary: MusicResultItem[],
   limit?: number
 ): MusicResultItem[] {
-  const seen = new Set<string>();
+  const indexByKey = new Map<string, number>();
   const merged: MusicResultItem[] = [];
   const maxLen = Math.max(primary.length, secondary.length);
   for (let i = 0; i < maxLen; i += 1) {
     for (const candidate of [primary[i], secondary[i]]) {
       if (!candidate) continue;
       const key = `${candidate.type}:${candidate.title.trim().toLowerCase()}::${candidate.subtitle.trim().toLowerCase()}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push(candidate);
+      const existingIdx = indexByKey.get(key);
+      if (existingIdx !== undefined) {
+        merged[existingIdx] = enrichMergedMusicItem(
+          merged[existingIdx],
+          candidate
+        );
+        continue;
       }
-      if (limit && merged.length >= limit) return merged;
+      if (limit && merged.length >= limit) continue;
+      indexByKey.set(key, merged.length);
+      merged.push(candidate);
     }
   }
   return merged;
+}
+
+async function hydratePreviewBatch(
+  items: MusicResultItem[],
+  maxLookups = 8
+): Promise<MusicResultItem[]> {
+  const targets = items
+    .map((item, idx) => ({ item, idx }))
+    .filter(
+      ({ item }) => item.type !== "album" && !item.featuredTrack.previewUrl
+    )
+    .slice(0, maxLookups);
+
+  if (targets.length === 0) return items;
+
+  const updated = [...items];
+  await Promise.race([
+    Promise.all(
+      targets.map(async ({ item, idx }) => {
+        try {
+          const fallback = await findItunesPreview(
+            item.featuredTrack.artistName || item.title,
+            item.featuredTrack.title
+          );
+          if (fallback.previewUrl) {
+            updated[idx] = {
+              ...item,
+              featuredTrack: {
+                ...item.featuredTrack,
+                previewUrl: fallback.previewUrl,
+                duration: fallback.duration || item.featuredTrack.duration,
+                title:
+                  item.type === "artist" && fallback.title
+                    ? fallback.title
+                    : item.featuredTrack.title,
+              },
+            };
+          }
+        } catch {
+          // Graceful fallback handled by MiniPlayer lazy preview-fallback
+        }
+      })
+    ),
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, 1800);
+    }),
+  ]);
+
+  return updated;
 }
 
 async function searchFallbackArtists(
@@ -365,13 +455,18 @@ export async function searchArtistsForQuiz(
       searchFallbackArtists(trimmed, limit),
     ]);
     if (spotifyRes.artists.length > 0 || spotifyRes.items.length > 0) {
+      const mergedItems = mergeUniqueMusicItems(
+        spotifyRes.items,
+        baseRes.items,
+        limit
+      );
       return {
         artists: mergeUniqueQuizArtists(
           spotifyRes.artists,
           baseRes.artists,
           limit
         ),
-        items: mergeUniqueMusicItems(spotifyRes.items, baseRes.items, limit),
+        items: await hydratePreviewBatch(mergedItems, limit),
         provider: baseRes.items.length > 0 ? "hybrid" : "spotify",
       };
     }
@@ -501,8 +596,16 @@ export async function searchMusicEntities(
     ]);
 
     if (spotifyItems.length > 0) {
+      const mergedItems = mergeUniqueMusicItems(
+        spotifyItems,
+        baseRes.items,
+        limit * 2
+      );
       return {
-        items: mergeUniqueMusicItems(spotifyItems, baseRes.items, limit * 2),
+        items:
+          type === "track"
+            ? await hydratePreviewBatch(mergedItems, Math.min(8, limit))
+            : mergedItems,
         provider: baseRes.items.length > 0 ? "hybrid" : "spotify",
       };
     }
