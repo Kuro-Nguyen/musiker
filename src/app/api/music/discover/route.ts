@@ -19,8 +19,24 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json().catch(() => ({}))) as DiscoverPayload;
 
-    const tasteProfile: TasteProfile =
-      body.tasteProfile ?? DEFAULT_TASTE_PROFILE;
+    const rawTaste = body.tasteProfile;
+    const tasteProfile: TasteProfile = {
+      ...DEFAULT_TASTE_PROFILE,
+      ...(rawTaste ?? {}),
+      seedArtists: Array.isArray(rawTaste?.seedArtists)
+        ? rawTaste.seedArtists
+        : DEFAULT_TASTE_PROFILE.seedArtists,
+      preferredGenres: Array.isArray(rawTaste?.preferredGenres)
+        ? rawTaste.preferredGenres
+        : DEFAULT_TASTE_PROFILE.preferredGenres,
+      excludedGenres: Array.isArray(rawTaste?.excludedGenres)
+        ? rawTaste.excludedGenres
+        : DEFAULT_TASTE_PROFILE.excludedGenres,
+      dimensions: {
+        ...DEFAULT_TASTE_PROFILE.dimensions,
+        ...(rawTaste?.dimensions ?? {}),
+      },
+    };
     const filters: QuickFilters = {
       ...DEFAULT_QUICK_FILTERS,
       ...(body.filters ?? {}),

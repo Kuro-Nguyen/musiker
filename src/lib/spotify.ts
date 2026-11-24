@@ -318,7 +318,7 @@ export async function searchSpotifyArtists(
       coverUrl,
       genre: primaryGenre,
       popularityScore: artist.popularity ?? Math.max(58, 92 - index * 4),
-      discoveryReason: "Nghệ sĩ từ Spotify Web API",
+      discoveryReason: "Nghệ sĩ trên Spotify",
       featuredTrack: {
         id: `sp-artist-top-${artist.id}`,
         title: artist.name,
@@ -372,7 +372,7 @@ export async function searchSpotifyTracks(
       coverUrl,
       releaseYear: track.album?.release_date?.slice(0, 4),
       popularityScore: track.popularity ?? Math.max(52, 92 - index * 4),
-      discoveryReason: "Bài hát từ Spotify Web API",
+      discoveryReason: "Bài hát trên Spotify • Nghe thử 30s",
       featuredTrack: {
         ...trackItem,
         coverUrl,
@@ -422,7 +422,7 @@ export async function searchSpotifyAlbums(
       coverUrl,
       releaseYear: album.release_date?.slice(0, 4),
       popularityScore: Math.max(54, 92 - index * 4),
-      discoveryReason: `Spotify Album (${album.total_tracks ?? "EP"} bài) • Preview từ iTunes/Spotify`,
+      discoveryReason: `Album (${album.total_tracks ?? "EP"} bài) • Spotify`,
       featuredTrack: {
         id: `sp-album-featured-${album.id}`,
         title: album.name,
@@ -556,7 +556,7 @@ export async function getSpotifyAlbumDetails(
     releaseYear: album.release_date?.slice(0, 4),
     genre: album.genres?.[0],
     popularityScore: album.popularity ?? 85,
-    discoveryReason: `Tracklist ${tracklist.length} bài • Nguồn Spotify Web API`,
+    discoveryReason: `Album • ${tracklist.length} bài • Spotify`,
     featuredTrack,
     tracklist,
     externalUrl:

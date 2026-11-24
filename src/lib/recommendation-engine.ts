@@ -533,7 +533,7 @@ async function buildQuerySeeds(req: DiscoverRequest): Promise<QuerySeed[]> {
       for (const hop2Target of pickRandomSample(node.hop2, 2)) {
         seeds.push({
           term: hop2Target,
-          reasonLabel: `2-hop từ ${seedArtist.name} → ${hop1Bridge} • Độ khám phá ${discoveryLevel}%`,
+          reasonLabel: `Mở rộng từ ${seedArtist.name} qua ${hop1Bridge} • Độ khám phá ${discoveryLevel}%`,
           hopWeight: 1.45,
           expectedArtist: hop2Target,
           isDeepCut: true,
@@ -839,7 +839,7 @@ function filterAndRelaxCandidates(
   ).map((item) => ({
     item,
     hopWeight: 0.5,
-    reasonLabel: `Đề xuất dự phòng • Độ khám phá ${req.discoveryLevel}%`,
+    reasonLabel: `Gợi ý chọn lọc • Độ khám phá ${req.discoveryLevel}%`,
   }));
 
   return [...basePool, ...emergency];

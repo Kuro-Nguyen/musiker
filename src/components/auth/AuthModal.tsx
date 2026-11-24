@@ -3,7 +3,6 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  AlertCircle,
   BookmarkCheck,
   Eye,
   EyeOff,
@@ -51,7 +50,6 @@ export function AuthModal() {
     isAuthModalOpen,
     authModalReason,
     pendingAction,
-    isConfigured,
     closeAuthModal,
     signInWithGoogle,
     signInWithEmail,
@@ -188,7 +186,7 @@ export function AuthModal() {
                   id="auth-modal-title"
                   className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-primary)]"
                 >
-                  {APP_NAME} {"//"} ACCOUNT SYNC
+                  {APP_NAME} • TÀI KHOẢN
                 </h2>
               </div>
 
@@ -216,25 +214,10 @@ export function AuthModal() {
                     <p className="font-medium">{authModalReason}</p>
                     {pendingAction?.type === "saveItem" && (
                       <p className="text-[11px] text-[var(--text-secondary)]">
-                        Sau khi đăng nhập, mục này sẽ tự động được lưu vào Cloud Firestore của bạn.
+                        Sau khi đăng nhập, mục này sẽ tự động được lưu vào Tủ nhạc của bạn.
                       </p>
                     )}
                   </div>
-                </div>
-              )}
-
-              {/* Firebase Config Warning when env vars are missing */}
-              {!isConfigured && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-xs text-[var(--text-primary)]">
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                  <p className="text-[11px] text-[var(--text-secondary)]">
-                    Firebase chưa được cấu hình. Hãy điền các biến{" "}
-                    <code className="font-mono text-[var(--text-primary)]">
-                      NEXT_PUBLIC_FIREBASE_*
-                    </code>{" "}
-                    vào file <code className="font-mono">.env.local</code> theo hướng dẫn trong{" "}
-                    <code className="font-mono">README.md</code>.
-                  </p>
                 </div>
               )}
 
@@ -294,7 +277,7 @@ export function AuthModal() {
                 <>
                   <button
                     type="button"
-                    disabled={isSubmitting || !isConfigured}
+                    disabled={isSubmitting}
                     onClick={() => void handleGoogleAuth()}
                     className="flex h-11 w-full items-center justify-center gap-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 text-xs font-semibold text-[var(--text-primary)] transition-colors hover:border-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed sm:h-10"
                   >
@@ -432,7 +415,7 @@ export function AuthModal() {
 
                 <button
                   type="submit"
-                  disabled={isSubmitting || !isConfigured}
+                  disabled={isSubmitting}
                   className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#FF5500] px-4 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#E64D00] disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed sm:h-10"
                 >
                   {isSubmitting ? (

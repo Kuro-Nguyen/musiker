@@ -266,7 +266,7 @@ export async function searchItunesArtists(
       coverUrl,
       genre: artist.primaryGenreName ?? topSong?.primaryGenreName,
       popularityScore: Math.max(55, 92 - index * 4),
-      discoveryReason: `Kết quả tìm kiếm trực tiếp • iTunes API`,
+      discoveryReason: "Nghệ sĩ trên Apple Music",
       featuredTrack,
       externalUrl,
     });
@@ -319,7 +319,7 @@ export async function searchItunesTracks(
         releaseYear: track.releaseDate ? track.releaseDate.slice(0, 4) : undefined,
         genre: track.primaryGenreName,
         popularityScore: Math.max(48, 94 - index * 4),
-        discoveryReason: "Bài hát từ Apple Music / iTunes • Preview 30s",
+        discoveryReason: "Bài hát trên Apple Music • Nghe thử 30s",
         featuredTrack: trackItem,
         externalUrl:
           track.trackViewUrl ??
@@ -388,7 +388,7 @@ export async function searchItunesAlbums(
         releaseYear: col.releaseDate ? col.releaseDate.slice(0, 4) : undefined,
         genre: col.primaryGenreName,
         popularityScore: Math.max(50, 93 - index * 4),
-        discoveryReason: "Album từ Apple Music / iTunes • Bấm Play hoặc Tracklist để nghe",
+        discoveryReason: "Album trên Apple Music",
         featuredTrack: {
           id: `album-featured-${albumId}`,
           title: albumTitle,
@@ -726,7 +726,7 @@ export async function getItunesAlbumDetails(
     releaseYear: releaseDate ? releaseDate.slice(0, 4) : undefined,
     genre: collectionInfo?.primaryGenreName ?? firstTrack?.primaryGenreName,
     popularityScore: 86,
-    discoveryReason: `Tracklist ${tracklist.length} bài • Nguồn iTunes API`,
+    discoveryReason: `Album • ${tracklist.length} bài • Apple Music`,
     featuredTrack,
     tracklist,
     externalUrl:

@@ -6,6 +6,7 @@ import {
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
 } from "firebase/auth";
 import { create } from "zustand";
@@ -73,13 +74,15 @@ function mapFirebaseAuthError(error: unknown): string {
     case "auth/cancelled-popup-request":
       return "Yêu cầu đăng nhập trước đó đã bị hủy. Vui lòng thử lại.";
     case "auth/popup-blocked":
-      return "Trình duyệt đã chặn pop-up Google. Hãy cho phép pop-up cho trang này và thử lại.";
+      return "Trình duyệt đã chặn cửa sổ đăng nhập Google. Vui lòng thử lại hoặc cho phép pop-up.";
+    case "auth/operation-not-allowed":
+      return "Phương thức đăng nhập này chưa được kích hoạt trên hệ thống.";
     case "auth/unauthorized-domain":
-      return "Tên miền hiện tại chưa được thêm vào Authorized domains trong Firebase Console.";
+      return "Tên miền hiện tại chưa được cấp phép đăng nhập trên Firebase.";
     case "auth/too-many-requests":
       return "Thử lại quá nhiều lần. Vui lòng đợi một lát rồi đăng nhập lại.";
     case "auth/network-request-failed":
-      return "Không thể kết nối máy chủ Firebase. Vui lòng kiểm tra kết nối mạng.";
+      return "Không thể kết nối máy chủ xác thực. Vui lòng kiểm tra kết nối mạng.";
     default:
       return "Không thể xác thực tài khoản lúc này. Vui lòng thử lại.";
   }
@@ -121,16 +124,34 @@ export const useAuthStore = create<AuthState>()((set) => ({
     if (!auth) {
       return {
         ok: false,
-        error: "Firebase chưa được cấu hình trong .env.local.",
+        error: "Dịch vụ đăng nhập tạm thời không khả dụng. Vui lòng thử lại.",
       };
     }
 
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
       await signInWithPopup(auth, provider);
       return { ok: true };
     } catch (error) {
+      const code =
+        typeof error === "object" && error !== null && "code" in error
+          ? String((error as { code?: unknown }).code ?? "")
+          : "";
+
+      if (
+        code === "auth/popup-blocked" ||
+        code === "auth/operation-not-supported-in-this-environment"
+      ) {
+        try {
+          await signInWithRedirect(auth, provider);
+          return { ok: true };
+        } catch (redirectError) {
+          return { ok: false, error: mapFirebaseAuthError(redirectError) };
+        }
+      }
+
       return { ok: false, error: mapFirebaseAuthError(error) };
     }
   },
@@ -140,7 +161,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
     if (!auth) {
       return {
         ok: false,
-        error: "Firebase chưa được cấu hình trong .env.local.",
+        error: "Dịch vụ đăng nhập tạm thời không khả dụng. Vui lòng thử lại.",
       };
     }
 
@@ -157,7 +178,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
     if (!auth) {
       return {
         ok: false,
-        error: "Firebase chưa được cấu hình trong .env.local.",
+        error: "Dịch vụ đăng nhập tạm thời không khả dụng. Vui lòng thử lại.",
       };
     }
 
@@ -174,7 +195,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
     if (!auth) {
       return {
         ok: false,
-        error: "Firebase chưa được cấu hình trong .env.local.",
+        error: "Dịch vụ đăng nhập tạm thời không khả dụng. Vui lòng thử lại.",
       };
     }
 

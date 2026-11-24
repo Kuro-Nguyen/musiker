@@ -27,7 +27,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "MUZIKER by Kuro — Minimalist Music Discovery & Randomizer",
   description:
-    "Khám phá ngẫu nhiên Album, Bài hát và Nghệ sĩ mỗi ngày theo phong cách tối giản — Zero-Auth, Album-First Experience.",
+    "Khám phá ngẫu nhiên Album, Bài hát và Nghệ sĩ mỗi ngày theo phong cách tối giản — Nghe thử 30s & đồng bộ tủ nhạc yêu thích.",
 };
 
 export default function RootLayout({

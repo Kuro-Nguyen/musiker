@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { onAuthStateChanged } from "firebase/auth";
+import { getRedirectResult, onAuthStateChanged } from "firebase/auth";
 import { getFirebaseAuth, isFirebaseConfigured } from "@/lib/firebase";
 import { subscribeSavedCrate } from "@/lib/firestore-crate";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -25,6 +25,8 @@ export function AuthSyncProvider({ children }: { children: React.ReactNode }) {
       setAuthState(null, false);
       return;
     }
+
+    void getRedirectResult(auth).catch(() => null);
 
     let unsubscribeCrate: (() => void) | null = null;
 

@@ -418,7 +418,7 @@ async function searchFallbackArtists(
           subtitle: "Nghệ sĩ",
           coverUrl: picture,
           popularityScore: normalizeDeezerScore(artist.nb_fan),
-          discoveryReason: "Kết quả tìm kiếm trực tiếp • Deezer API",
+          discoveryReason: "Nghệ sĩ trên Deezer",
           featuredTrack,
           externalUrl: artist.link ?? `https://www.deezer.com/artist/${artist.id}`,
         };
@@ -505,7 +505,7 @@ async function searchFallbackEntities(
             coverUrl: mappedTrack.coverUrl,
             releaseYear: track.album?.release_date?.slice(0, 4),
             popularityScore: normalizeDeezerScore(track.rank),
-            discoveryReason: "Bài hát từ Deezer Search • Preview 30s",
+            discoveryReason: "Bài hát trên Deezer • Nghe thử 30s",
             featuredTrack: mappedTrack,
             externalUrl: track.link ?? `https://www.deezer.com/track/${track.id}`,
           };
@@ -541,7 +541,7 @@ async function searchFallbackEntities(
           releaseYear: album.release_date?.slice(0, 4),
           genre: album.genres?.data?.[0]?.name,
           popularityScore: normalizeDeezerScore(album.fans),
-          discoveryReason: "Album từ Deezer Search • Bấm Play để nghe bài nổi bật",
+          discoveryReason: "Album trên Deezer",
           featuredTrack: {
             id: `dz-album-${album.id}`,
             title: album.title,
@@ -694,7 +694,7 @@ export async function getAlbumDetailsWithTracks(
             releaseYear: album.release_date?.slice(0, 4),
             genre: album.genres?.data?.[0]?.name,
             popularityScore: normalizeDeezerScore(album.fans),
-            discoveryReason: `Tracklist ${tracklist.length} bài • Nguồn Deezer API`,
+            discoveryReason: `Album • ${tracklist.length} bài • Deezer`,
             featuredTrack,
             tracklist,
             externalUrl: album.link ?? `https://www.deezer.com/album/${album.id}`,

@@ -373,7 +373,7 @@ export const MOCK_DISCOVERY_RESULTS: MusicResultItem[] = [
     releaseYear: "2005",
     genre: "Jazz Hop / Instrumental",
     popularityScore: 76,
-    discoveryReason: "2-hop Graph từ J Dilla & Nujabes • Độ khám phá 80%",
+    discoveryReason: "Gần gu với J Dilla & Nujabes • Độ khám phá 80%",
     externalUrl: "https://www.deezer.com",
     featuredTrack: {
       id: "t-modal-1",

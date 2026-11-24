@@ -165,7 +165,15 @@ export function subscribeSavedCrate(
     },
     (err) => {
       console.error("[Firestore SavedCrate] Subscription error:", err);
-      onError("Không thể đồng bộ Tủ nhạc từ Cloud Firestore.");
+      const code =
+        typeof err === "object" && err !== null && "code" in err
+          ? String((err as { code?: unknown }).code ?? "")
+          : "";
+      onError(
+        code === "permission-denied"
+          ? "Bạn không có quyền truy cập Tủ nhạc này."
+          : "Không thể đồng bộ Tủ nhạc trực tuyến lúc này."
+      );
     }
   );
 }
@@ -176,7 +184,7 @@ export async function saveItemToCrate(
 ): Promise<void> {
   const db = getFirebaseDb();
   if (!db) {
-    throw new Error("Firestore chưa được cấu hình.");
+    throw new Error("Không thể kết nối dịch vụ đồng bộ lúc này.");
   }
 
   const docId = toFirestoreDocId(item.id);
@@ -196,7 +204,7 @@ export async function removeItemFromCrate(
 ): Promise<void> {
   const db = getFirebaseDb();
   if (!db) {
-    throw new Error("Firestore chưa được cấu hình.");
+    throw new Error("Không thể kết nối dịch vụ đồng bộ lúc này.");
   }
 
   const docId = toFirestoreDocId(itemId);
@@ -209,7 +217,7 @@ export async function clearUserCrate(
 ): Promise<void> {
   const db = getFirebaseDb();
   if (!db) {
-    throw new Error("Firestore chưa được cấu hình.");
+    throw new Error("Không thể kết nối dịch vụ đồng bộ lúc này.");
   }
 
   for (let i = 0; i < itemIds.length; i += BATCH_DELETE_CHUNK_SIZE) {

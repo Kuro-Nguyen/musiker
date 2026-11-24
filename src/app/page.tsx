@@ -84,12 +84,6 @@ export default function HomePage() {
     MusicResultItem[]
   >([]);
   const [isDiscovering, setIsDiscovering] = React.useState<boolean>(true);
-  const [discoverProvider, setDiscoverProvider] = React.useState<string | null>(
-    null
-  );
-  const [discoverPoolSize, setDiscoverPoolSize] = React.useState<number | null>(
-    null
-  );
 
   // Stage 2: Collapsible Live API Search & Lazy Hydration state
   const [searchQuery, setSearchQuery] = React.useState<string>("");
@@ -281,8 +275,6 @@ export default function HomePage() {
 
         const items = data.items ?? [];
         setDiscoveredItems(items);
-        setDiscoverProvider(data.provider ?? "itunes");
-        setDiscoverPoolSize(data.meta?.candidatePoolSize ?? null);
         setAnimationSeed((prev) => prev + 1);
 
         if (items.length > 0) {
@@ -299,7 +291,7 @@ export default function HomePage() {
       } catch {
         if (reqId !== discoverReqIdRef.current) return;
         setStatusNotice(
-          "Không thể kết nối /api/music/discover lúc này. Vui lòng thử lại."
+          "Không thể tải gợi ý âm nhạc lúc này. Vui lòng thử lại."
         );
       } finally {
         if (reqId === discoverReqIdRef.current) {
@@ -362,7 +354,7 @@ export default function HomePage() {
       void runDiscover({
         overrideTaste: newProfile,
         userInitiated: false,
-        noticePrefix: `Đã lưu Gu âm nhạc (${names}) và tạo lượt đề xuất mới bằng 2-Hop Graph Engine!`,
+        noticePrefix: `Đã lưu Gu âm nhạc (${names}) và cập nhật gợi ý mới dành cho bạn!`,
       });
     },
     [runDiscover]
@@ -430,7 +422,7 @@ export default function HomePage() {
           );
         }
       } catch {
-        setStatusNotice("Lỗi kết nối khi gọi /api/music/search.");
+        setStatusNotice("Không thể tìm kiếm lúc này. Vui lòng thử lại.");
       } finally {
         setIsSearching(false);
       }
@@ -531,16 +523,22 @@ export default function HomePage() {
                 <Disc3 className="h-4 w-4 shrink-0 text-[#FF5500]" />
                 <h2 className="font-mono text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-primary)]">
                   {liveResults !== null
-                    ? `LIVE SEARCH // ${displayedResults.length} ITEMS`
+                    ? `KẾT QUẢ TÌM KIẾM // ${displayedResults.length}`
                     : isFeaturedLayout
-                      ? "FEATURED DISCOVERY"
-                      : `DISCOVERY GRID // ${displayedResults.length} ITEMS`}
+                      ? "ĐỀ XUẤT NỔI BẬT"
+                      : `KHÁM PHÁ // ${displayedResults.length} MỤC`}
                 </h2>
               </div>
               <span className="rounded bg-[var(--bg-elevated)] px-2 py-0.5 font-mono text-[10px] uppercase text-[var(--text-secondary)]">
                 {liveResults !== null
-                  ? `API // ${liveProvider ?? "ITUNES"}`
-                  : `${discoverProvider ?? "ENGINE"} • ${discoveryLevel}%${discoverPoolSize ? ` • ${discoverPoolSize} POOL` : ""}`}
+                  ? liveProvider === "hybrid"
+                    ? "SPOTIFY & APPLE"
+                    : liveProvider === "spotify"
+                      ? "SPOTIFY"
+                      : liveProvider === "deezer"
+                        ? "DEEZER"
+                        : "APPLE MUSIC"
+                  : `KHÁM PHÁ ${discoveryLevel}%`}
               </span>
             </div>
 
@@ -732,7 +730,7 @@ export default function HomePage() {
           <AnimatePresence>
             {isLiveSearchOpen && (
               <motion.section
-                aria-label="Tìm kiếm nhạc trực tiếp qua API"
+                aria-label="Tìm kiếm nhạc"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
@@ -745,10 +743,7 @@ export default function HomePage() {
                       <div className="flex items-center gap-2">
                         <Search className="h-3.5 w-3.5 text-[#FF5500]" />
                         <span className="text-xs font-semibold text-[var(--text-primary)]">
-                          Tìm kiếm nhanh Live Music API
-                        </span>
-                        <span className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-secondary)]">
-                          /api/music/search
+                          Tìm kiếm nhanh Album, Bài hát & Nghệ sĩ
                         </span>
                       </div>
                       {liveResults !== null && (
@@ -758,7 +753,7 @@ export default function HomePage() {
                           className="inline-flex items-center gap-1 font-mono text-[11px] text-[#FF5500] hover:underline cursor-pointer"
                         >
                           <X className="h-3 w-3" />
-                          <span>Quay lại Discovery Engine</span>
+                          <span>Quay lại khám phá ngẫu nhiên</span>
                         </button>
                       )}
                     </div>
@@ -772,7 +767,7 @@ export default function HomePage() {
                           type="text"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Tìm Album, Bài hát hoặc Nghệ sĩ thật (VD: Frank Ocean, Nujabes, Sơn Tùng M-TP)..."
+                          placeholder="Tìm Album, Bài hát hoặc Nghệ sĩ (VD: Frank Ocean, Nujabes, Sơn Tùng M-TP)..."
                           aria-label="Từ khóa tìm kiếm nhạc"
                           className="h-11 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] pl-3.5 pr-10 text-base text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] outline-none transition-colors focus:border-[#FF5500] sm:h-10 sm:pr-9 sm:text-xs"
                         />
